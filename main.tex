@@ -1,0 +1,537 @@
+\documentclass[a4paper,12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{geometry}
+\usepackage{tikz} % Pacchetto per i grafici
+\usepackage{xcolor} % Pacchetto per i colori
+
+% Impostazioni margini
+\geometry{a4paper, margin=2.5cm}
+
+% Definizione colori
+\definecolor{myblue}{RGB}{0, 102, 204}
+\definecolor{myred}{RGB}{204, 0, 0}
+\definecolor{mygreen}{RGB}{0, 153, 76}
+
+% Personalizzazione titoli sezioni
+\usepackage{titlesec}
+\titleformat{\section}
+{\color{myblue}\normalfont\Large\bfseries}
+{\color{myblue}\thesection}{1em}{}
+
+\titleformat{\subsection}
+{\color{myblue}\normalfont\large\bfseries}
+{\color{myblue}\thesubsection}{1em}{}
+
+% Definizione dello stile per le definizioni
+\theoremstyle{definition}
+\newtheorem{definizione}{Definizione}[section]
+
+\title{\textbf{\textcolor{myblue}{Definizioni Fondamentali}}\\ \large Analisi Statica e Verifica del Software}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Set (Insieme)}
+
+\begin{definizione}[\textbf{Insieme}]
+Un insieme (\textit{set}) è una collezione di oggetti ben definiti e distinti. La collezione stessa è considerata un oggetto a sé stante.
+\end{definizione}
+
+Dato un insieme $S$, valgono le seguenti notazioni fondamentali:
+\begin{itemize}
+    \item \textbf{Appartenenza:} $s \in S$ indica che l'elemento $s$ appartiene all'insieme $S$.
+    \item \textbf{Sottoinsieme:} $S_1 \subseteq S_2 \iff \forall s \in S_1 \Rightarrow s \in S_2$.
+    \item \textbf{Unione:} $S_1 \cup S_2 = \{s \mid s \in S_1 \vee s \in S_2\}$.
+    \item \textbf{Intersezione:} $S_1 \cap S_2 = \{s \mid s \in S_1 \wedge s \in S_2\}$.
+\end{itemize}
+
+\section{Partial Order (Ordine Parziale)}
+
+\begin{definizione}[\textbf{Ordine Parziale}]
+Un ordine parziale è una relazione binaria $\sqsubseteq$ su un insieme $X$ che soddisfa le seguenti tre proprietà per ogni $x, y, z \in X$:
+\begin{enumerate}
+    \item \textbf{Riflessività:} $\forall x \in X \Rightarrow x \sqsubseteq x$.
+    \item \textbf{Anti-simmetria:} $(x \sqsubseteq y \wedge y \sqsubseteq x) \Rightarrow x = y$.
+    \item \textbf{Transitività:} $(x \sqsubseteq y \wedge y \sqsubseteq z) \Rightarrow x \sqsubseteq z$.
+\end{enumerate}
+\end{definizione}
+
+\section{Poset (Insieme Parzialmente Ordinato)}
+
+\begin{definizione}[\textbf{Poset}]
+Un \textit{Poset} (Partially Ordered Set) è la coppia formata da un insieme $X$ e da una relazione di ordine parziale definita su di esso. Si denota formalmente come:
+\[ \langle X, \sqsubseteq \rangle \]
+\end{definizione}
+
+\noindent \textbf{Esempio:} L'insieme dei numeri interi con la relazione "minore o uguale" è un poset: $\langle \mathbb{Z}, \le \rangle$.
+
+\section{Powerset (Insieme delle Parti)}
+
+\begin{definizione}[\textbf{Powerset}]
+Dato un insieme $S$, l'insieme delle parti (\textit{powerset}) di $S$, indicato con $\wp(S)$ (o $\mathcal{P}(S)$), è l'insieme di tutti i sottoinsiemi di $S$:
+\[ \wp(S) = \{ U \mid U \subseteq S \} \]
+\end{definizione}
+
+\noindent \textbf{Cardinalità:} Dato un insieme $S$ con $|S| = n$ elementi, il suo powerset ha $|\wp(S)| = 2^n$ elementi.
+
+\noindent \textbf{Struttura di Poset:} Un powerset forma naturalmente un poset rispetto alla relazione di inclusione insiemistica: $\langle \wp(S), \subseteq \rangle$.
+
+\newpage
+
+\section{Bounds e Operazioni nel Powerset}
+
+In un poset generico $\langle X, \sqsubseteq \rangle$, definiamo i concetti di limiti (bounds) per un sottoinsieme $Y \subseteq X$.
+
+\subsection{Definizioni Astratte}
+
+\begin{definizione}[\textbf{Upper Bound e LUB}]
+\leavevmode
+\begin{itemize}
+    \item \textbf{Upper Bound (Maggiorante):} Un elemento $u \in X$ è un upper bound di $Y$ se è maggiore o uguale a tutti gli elementi di $Y$ ($\forall y \in Y, y \sqsubseteq u$).
+    \item \textbf{Least Upper Bound (LUB o Join $\sqcup$):} È il più piccolo tra tutti gli upper bound. Se esiste, è unico.
+\end{itemize}
+\end{definizione}
+
+\begin{definizione}[\textbf{Lower Bound e GLB}]
+\leavevmode
+\begin{itemize}
+    \item \textbf{Lower Bound (Minorante):} Un elemento $l \in X$ è un lower bound di $Y$ se è minore o uguale a tutti gli elementi di $Y$ ($\forall y \in Y, l \sqsubseteq y$).
+    \item \textbf{Greatest Lower Bound (GLB o Meet $\sqcap$):} È il più grande tra tutti i lower bound. Se esiste, è unico.
+\end{itemize}
+\end{definizione}
+
+\subsection{Applicazione nel Powerset}
+
+Nel caso specifico del Powerset $\langle \wp(S), \subseteq \rangle$, le operazioni astratte corrispondono alle operazioni insiemistiche classiche:
+
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Concetto Astratto} & \textbf{Simbolo} & \textbf{Nel Powerset ($\subseteq$)} \\
+\hline
+Ordine Parziale & $\sqsubseteq$ & Inclusione ($\subseteq$) \\
+Least Upper Bound (Join) & $\sqcup$ & \textbf{Unione ($\cup$)} \\
+Greatest Lower Bound (Meet) & $\sqcap$ & \textbf{Intersezione ($\cap$)} \\
+Elemento Top & $\top$ & Insieme Universo ($S$) \\
+Elemento Bottom & $\bot$ & Insieme Vuoto ($\emptyset$) \\
+\hline
+\end{tabular}
+\end{center}
+
+\vspace{0.5cm}
+
+\subsection{Rappresentazione Grafica (Diagramma di Hasse)}
+Esempio del poset $\wp(\{a, b\})$ ordinato per inclusione.
+
+\begin{center}
+\begin{tikzpicture}[node distance=2cm]
+    % Nodi
+    \node (top) at (0,3) {$\{a, b\}$ ($\top$)};
+    \node (a) at (-2,1.5) {$\{a\}$};
+    \node (b) at (2,1.5) {$\{b\}$};
+    \node (bot) at (0,0) {$\emptyset$ ($\bot$)};
+
+    % Archi (relazioni di inclusione)
+    \draw (bot) -- (a);
+    \draw (bot) -- (b);
+    \draw (a) -- (top);
+    \draw (b) -- (top);
+    
+    % Etichette extra
+    \node[right of=top, xshift=1cm, text width=4cm, font=\small, align=left, color=myred] {$\leftarrow$ \textbf{Upper Bound} di $\{a\}$ e $\{b\}$ (Unione)};
+    \node[right of=bot, xshift=1cm, text width=4cm, font=\small, align=left, color=mygreen] {$\leftarrow$ \textbf{Lower Bound} di $\{a\}$ e $\{b\}$ (Intersezione)};
+\end{tikzpicture}
+\end{center}
+
+\newpage
+
+\section{Reticoli (Lattices)}
+
+Un reticolo è un tipo speciale di poset "molto ordinato", in cui non ci si perde mai né salendo né scendendo.
+
+\subsection{Lattice (Reticolo)}
+
+\begin{definizione}[\textbf{Lattice}]
+Un poset $\langle X, \sqsubseteq \rangle$ è un \textbf{Lattice} se, per \textbf{ogni coppia} di elementi $x, y \in X$, esistono sempre:
+\begin{enumerate}
+    \item Il loro \textbf{Join} $x \sqcup y$ (Least Upper Bound).
+    \item Il loro \textbf{Meet} $x \sqcap y$ (Greatest Lower Bound).
+\end{enumerate}
+\end{definizione}
+
+\noindent \textbf{Differenza visiva:}
+\begin{itemize}
+    \item \textbf{Join Semi-Lattice:} Converge sempre andando verso l'alto (come una V).
+    \item \textbf{Meet Semi-Lattice:} Converge sempre andando verso il basso (come una $\wedge$).
+    \item \textbf{Lattice:} È chiuso sia sopra che sotto (come un diamante).
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}
+
+    % --- PRIMO GRUPPO (Join) ---
+    % Nessuno spostamento necessario, parte da 0
+    \begin{scope} 
+        \node at (0,0) (j1) {$\bullet$};
+        \node at (1,0) (j2) {$\bullet$};
+        \node at (0.5,1) (jtop) {$\bullet$};
+        \draw (j1) -- (jtop);
+        \draw (j2) -- (jtop);
+        \node at (0.5, -0.5) {\textit{Join Semi-Lattice}};
+    \end{scope}
+
+    % --- SECONDO GRUPPO (Meet) ---
+    % Sposto tutto questo blocco di 4cm a destra
+    \begin{scope}[xshift=4cm] 
+        % Nota: ho riscritto le coordinate partendo da 0 per comodità
+        \node at (0,1) (m1) {$\bullet$};
+        \node at (1,1) (m2) {$\bullet$};
+        \node at (0.5,0) (mbot) {$\bullet$};
+        \draw (mbot) -- (m1);
+        \draw (mbot) -- (m2);
+        \node at (0.5, -0.5) {\textit{Meet Semi-Lattice}};
+    \end{scope}
+
+    % --- TERZO GRUPPO (Lattice) ---
+    % Sposto tutto questo blocco di 8cm a destra (4cm + 4cm)
+    \begin{scope}[xshift=8cm]
+        % Anche qui coordinate relative (centrate su 0.5 circa)
+        \node at (0.5,0.5) (lbot) {$\bullet$};
+        \node at (0,1.5) (l1) {$\bullet$};
+        \node at (1,1.5) (l2) {$\bullet$};
+        \node at (0.5,2.5) (ltop) {$\bullet$};
+        \draw (lbot) -- (l1) -- (ltop) -- (l2) -- (lbot);
+        \node at (0.5, -0.5) {\textit{Lattice}};
+    \end{scope}
+
+\end{tikzpicture}
+\end{center}
+\subsection{Set Lattice (Reticolo di Insiemi)}
+
+È l'"istanza concreta" più comune di un reticolo.
+
+\begin{definizione}[\textbf{Set Lattice}]
+Dato un insieme $S$, il \textbf{Set Lattice} è la struttura formata dal suo powerset $\wp(S)$ equipaggiato con le operazioni insiemistiche classiche:
+\[ \langle \wp(S), \subseteq, \cup, \cap \rangle \]
+\end{definizione}
+
+\noindent \textbf{Caratteristiche:}
+\begin{itemize}
+    \item \textbf{Dominio:} Insieme delle parti.
+    \item \textbf{Join ($\sqcup$):} Unione ($\cup$).
+    \item \textbf{Meet ($\sqcap$):} Intersezione ($\cap$).
+\end{itemize}
+
+\begin{center}
+\begin{tikzpicture}[scale=0.8]
+    % Set Lattice di {-1, 0, 1}
+    \node (bot) at (0,0) {$\emptyset$};
+    
+    \node (n1) at (-3,1.5) {$\{-1\}$};
+    \node (n0) at (0,1.5) {$\{0\}$};
+    \node (p1) at (3,1.5) {$\{1\}$};
+    
+    \node (n10) at (-3,3) {$\{-1, 0\}$};
+    \node (n1p1) at (0,3) {$\{-1, 1\}$};
+    \node (n0p1) at (3,3) {$\{0, 1\}$};
+    
+    \node (top) at (0,4.5) {$\{-1, 0, 1\}$};
+
+    % Archi
+    \draw (bot) -- (n1); \draw (bot) -- (n0); \draw (bot) -- (p1);
+    \draw (n1) -- (n10); \draw (n1) -- (n1p1);
+    \draw (n0) -- (n10); \draw (n0) -- (n0p1);
+    \draw (p1) -- (n1p1); \draw (p1) -- (n0p1);
+    \draw (n10) -- (top); \draw (n1p1) -- (top); \draw (n0p1) -- (top);
+    
+    \node at (0, -1) {\textbf{Esempio:} Set Lattice su $\wp(\{-1,0,1\})$};
+\end{tikzpicture}
+\end{center}
+
+\subsection{Complete Lattice (Reticolo Completo)}
+
+\begin{definizione}[\textbf{Complete Lattice}]
+Un reticolo è \textbf{completo} se Join ($\sqcup$) e Meet ($\sqcap$) esistono per \textbf{qualsiasi sottoinsieme} del dominio, anche infinito.
+\end{definizione}
+
+\noindent \textbf{Conseguenze importanti:}
+\begin{itemize}
+    \item Un reticolo completo ha sempre un elemento \textbf{Top} ($\top = \sqcup X$) e un elemento \textbf{Bottom} ($\bot = \sqcap X$).
+    \item I reticoli finiti (come i Set Lattice su insiemi finiti) sono sempre completi.
+    \item I numeri interi $\langle \mathbb{Z}, \le \rangle$ sono un Lattice ma \textbf{non} completo (mancano $\top$ e $\bot$). Per renderlo completo bisogna aggiungere $+\infty$ e $-\infty$.
+\end{itemize}
+
+\newpage
+
+\section{Relazioni e Funzioni (Maps)}
+
+Questi concetti matematici sono fondamentali per descrivere come cambiano gli stati di un programma durante l'esecuzione.
+
+\subsection{Relazioni}
+
+\begin{definizione}[\textbf{Relazione}]
+Dati due insiemi $X$ e $Y$, una \textbf{relazione} $R$ è un sottoinsieme del prodotto cartesiano $X \times Y$:
+\[ R \subseteq X \times Y \]
+\end{definizione}
+
+\noindent \textbf{Esempio:} L'ordine parziale $\sqsubseteq$ è una relazione definita su un insieme con se stesso ($R \subseteq X \times X$).
+
+\subsection{Funzioni (Maps)}
+
+\begin{definizione}[\textbf{Funzione}]
+Una \textbf{funzione} (o mappa) $f: X \rightarrow Y$ è una relazione speciale che soddisfa la proprietà di \textbf{unicità dell'immagine}: per ogni input $x \in X$, esiste al massimo un output $y \in Y$.
+\end{definizione}
+
+\noindent Le funzioni sono usate per modellare lo stato della memoria (es. mappa \textit{variabile} $\rightarrow$ \textit{valore}).
+
+\subsubsection{Proprietà delle Funzioni sui Poset}
+
+Quando le funzioni operano su insiemi ordinati (Poset), ci interessano tre proprietà chiave per l'analisi statica.
+
+\begin{definizione}[\textbf{Monotonia}]
+Una funzione $f: X \rightarrow Y$ è \textbf{monotona} se preserva l'ordine:
+\[ x_1 \sqsubseteq x_2 \implies f(x_1) \sqsubseteq f(x_2) \]
+\textit{Intuitivamente:} Se l'input "cresce" (diventa più grande o più preciso), l'output non può "decrescere".
+\end{definizione}
+
+\begin{definizione}[\textbf{Embedding Ordinato}]
+È una condizione più forte della monotonia. La funzione preserva l'ordine in entrambe le direzioni:
+\[ x_1 \sqsubseteq x_2 \iff f(x_1) \sqsubseteq f(x_2) \]
+La struttura dell'ordine viene conservata perfettamente nel passaggio da $X$ a $Y$.
+\end{definizione}
+
+\begin{definizione}[\textbf{Isomorfismo}]
+È un embedding ordinato che è anche \textbf{suriettivo} (copre tutto il codominio $Y$). Significa che i due poset $X$ e $Y$ sono strutturalmente identici.
+\end{definizione}
+
+\vspace{0.5cm}
+
+\begin{center}
+\begin{tikzpicture}
+
+    % --- GRAFICO 1: MONOTONIA (Sinistra) ---
+    \begin{scope}
+        % Titolo
+        \node at (2, 4.5) {\textbf{Funzione Monotona}};
+        
+        % Dominio X
+        \node at (0,3) (x1) {1};
+        \node at (0,2) (x0) {0};
+        \node at (0,1) (xm1) {-1};
+        \draw (xm1) -- (x0) -- (x1);
+        \node at (0, 0) {$\langle \mathbb{Z}, \le \rangle$};
+
+        % Codominio Y
+        \node at (4,3) (y1) {1};
+        \node at (4,2) (y0) {0};
+        \node at (4,1) (ym1) {-1};
+        \draw (ym1) -- (y0) -- (y1);
+        \node at (4, 0) {$\langle \mathbb{Z}, \le \rangle$};
+
+        % Frecce rosse
+        \draw[->, color=myred, thick] (x1) -- (y1);
+        \draw[->, color=myred, thick] (x0) -- (y1);
+        \draw[->, color=myred, thick] (xm1) -- (y0);
+
+        % Descrizione
+        \node at (2, -1.5) {\parbox{6cm}{\centering Se $x$ sale, la freccia non scende mai ($f(x_1) \sqsubseteq f(x_2)$).}};
+    \end{scope}
+
+    % --- GRAFICO 2: EMBEDDING (Destra) ---
+    % Spostiamo tutto di 7.5cm a destra
+    \begin{scope}[xshift=7.5cm]
+        % Titolo
+        \node at (2.5, 4.5) {\textbf{Embedding Ordinato}};
+        
+        % Dominio X
+        \node at (0,3) (x1) {1};
+        \node at (0,2) (x0) {0};
+        \node at (0,1) (xm1) {-1};
+        \draw (xm1) -- (x0) -- (x1);
+        \node at (0, 0) {$\langle \mathbb{Z}, \le \rangle$};
+
+        % Codominio Y
+        \node at (5,3) (y3) {3};
+        \node at (5,2) (y2) {2};
+        \node at (5,1) (y1) {1};
+        \draw (y1) -- (y2) -- (y3);
+        \node at (5, 0) {$\langle \mathbb{Z}, \le \rangle$};
+
+        % Frecce blu
+        \draw[->, color=blue, thick] (x1) -- (y3); 
+        \draw[->, color=blue, thick] (x0) -- (y2);
+        \draw[->, color=blue, thick] (xm1) -- (y1);
+
+        % Descrizione
+        \node at (2.5, -1.5) {\parbox{6cm}{\centering Struttura copiata identica ($f(x)=x+2$).\\ Iniettiva e bidirezionale.}};
+    \end{scope}
+
+\end{tikzpicture}
+\end{center}
+\section{Teoria del Punto Fisso e Terminazione}
+
+Questa sezione copre i concetti matematici necessari per garantire che l'analisi statica termini e produca risultati corretti, specialmente in presenza di cicli.
+
+\subsection{Chains (Catene)}
+
+\begin{definizione}[\textbf{Catena}]
+Dato un poset $\langle X, \sqsubseteq \rangle$, un sottoinsieme $C \subseteq X$ è una \textbf{catena} se è totalmente ordinato, ovvero tutti gli elementi sono confrontabili tra loro:
+\[ \forall x, y \in C \implies (x \sqsubseteq y \lor y \sqsubseteq x) \]
+\end{definizione}
+
+\noindent \textbf{Catena Ascendente:} Una sequenza indicizzata $(l_n)_{n \in \mathbb{N}}$ tale che $i \le j \implies l_i \sqsubseteq l_j$.
+\[ l_0 \sqsubseteq l_1 \sqsubseteq l_2 \sqsubseteq \dots \]
+Nell'analisi statica, le catene ascendenti rappresentano l'accumulo progressivo di informazioni durante le iterazioni.
+
+\subsection{ACC (Ascending Chain Condition)}
+
+Questa proprietà è fondamentale per garantire la \textbf{terminazione} degli algoritmi di analisi.
+
+\begin{definizione}[\textbf{ACC}]
+Un poset soddisfa la \textbf{Ascending Chain Condition} se ogni catena ascendente infinita alla fine si \textbf{stabilizza}. Esiste un indice $k$ oltre il quale il valore non cambia più:
+\[ \exists k \ge 0 \text{ tale che } \forall j \ge k, l_k = l_j \]
+\end{definizione}
+
+\noindent \textit{Intuizione:} Non è possibile "crescere" all'infinito. Se il dominio ha la ACC (es. è finito), l'analizzatore non andrà mai in loop infinito.
+
+\subsection{Mappe Continue}
+
+\begin{definizione}[\textbf{Funzione Continua}]
+Siano $X$ e $Y$ due CPO (Complete Partial Orders). Una funzione $f: X \to Y$ è \textbf{continua} se preserva i limiti delle catene (i LUB):
+\[ f\left(\bigsqcup C\right) = \bigsqcup_{c \in C} f(c) \]
+\end{definizione}
+
+\noindent \textbf{Nota:} La continuità è una condizione più forte della monotonia. È necessaria per applicare il Teorema di Kleene.
+
+\subsection{Fixpoint (Punto Fisso)}
+
+I punti fissi forniscono la semantica dei costrutti ciclici (loop).
+
+\begin{definizione}[\textbf{Punto Fisso}]
+Dato un insieme $X$ e una funzione $f: X \to X$, un elemento $x \in X$ è un punto fisso se:
+\[ f(x) = x \]
+\end{definizione}
+
+\noindent Nell'analisi statica cerchiamo il \textbf{Least Fixpoint (lfp)}, ovvero il punto fisso più piccolo, che rappresenta l'insieme minimo dei comportamenti possibili del programma.
+
+\subsubsection{Teoremi fondamentali}
+
+\begin{itemize}
+    \item \textbf{\textcolor{myblue}{Teorema di Knaster-Tarski:}} Se $\langle X, \sqsubseteq \rangle$ è un reticolo completo e $f$ è \textbf{monotona}, allora l'insieme dei punti fissi è un reticolo completo e il lfp esiste. \\
+    \textit{Limite:} Non dice come calcolarlo (non costruttivo).
+    
+    \item \textbf{\textcolor{myblue}{Teorema di Kleene:}} Se $\langle X, \sqsubseteq \rangle$ è un CPO e $f$ è \textbf{continua}, allora il lfp è il limite dell'iterazione partendo dal basso ($\bot$):
+    \[ lfp(f) = \bigsqcup_{n \in \mathbb{N}} f^n(\bot) \]
+    \textit{Vantaggio:} Fornisce un algoritmo costruttivo (iterativo) usato dagli analizzatori.
+\end{itemize}
+
+\newpage
+
+\section{Il Linguaggio IMP}
+
+IMP è un linguaggio imperativo minimale ("toy language") utilizzato per modellare formalmente la semantica senza la complessità dei linguaggi reali. È Turing-completo.
+
+\subsection{Sintassi}
+
+La sintassi è divisa in tre categorie sintattiche:
+
+\begin{enumerate}
+    \item \textbf{Espressioni Aritmetiche ($e$):} Calcolano valori interi.
+    \[ e ::= x \mid n \mid e_1 \ op_a \ e_2 \]
+    \textit{Dove:} $x$ è una variabile, $n \in \mathbb{Z}$, $op_a \in \{+, -, *, \div\}$.
+
+    \item \textbf{Espressioni Booleane ($b$):} Calcolano valori di verità (condizioni).
+    \[ b ::= \text{true} \mid \text{false} \mid \neg b \mid b_1 \ op_b \ b_2 \mid e_1 \ op_c \ e_2 \]
+    \textit{Dove:} $op_b \in \{\land, \lor\}$, $op_c \in \{==, <, >, \le\}$.
+
+    \item \textbf{Statement (Comandi, $s$):} Modificano lo stato della memoria.
+    \[ s ::= x := e \mid \text{skip} \mid s_1 ; s_2 \mid \text{if } b \text{ then } s_1 \text{ else } s_2 \mid \text{while } b \text{ do } s \]
+\end{enumerate}
+
+\subsection{Esempio di programma IMP}
+Un programma che calcola la somma dei numeri da 0 a $x$:
+
+\begin{verbatim}
+y := 0;
+while x > 0 do
+    y := y + x;
+    x := x - 1
+\end{verbatim}
+
+\section{Semantica delle Tracce}
+
+\subsection{Definizione di Traccia}
+
+\begin{definizione}[\textbf{Traccia}]
+Una traccia $\tau \in X^\infty$ è una sequenza di stati che rappresenta una singola evoluzione del programma:
+\begin{itemize}
+    \item \textbf{Finite:} L'esecuzione termina in uno stato finale (es. il programma finisce).
+    \item \textbf{Infinite:} L'esecuzione non termina (es. un ciclo \texttt{while(true)}).
+    \item \textbf{Parziali:} Rappresentano un prefisso dell'esecuzione fino a un certo punto intermedio (es. se interrompiamo l'analisi).
+\end{itemize}
+\end{definizione}
+
+\subsection{Semantica Concreta come Reticolo}
+L'insieme di \textbf{tutte} le possibili esecuzioni (semantica concreta) viene modellato utilizzando un reticolo basato sul powerset delle tracce:
+\[ \langle \wp(X^\infty), \subseteq, \cup, \cap \rangle \]
+L'obiettivo è calcolare questo insieme per catturare sia le esecuzioni che terminano correttamente, sia quelle che divergono (loop infiniti).
+
+\subsection{Calcolo tramite Least Fixpoint (lfp)}
+
+La semantica del programma $P$ si calcola cercando il \textbf{Least Fixpoint} della sua funzione di transizione $F_P$. Utilizzando il Teorema di Kleene, procediamo in modo iterativo partendo dal basso :
+
+\[ lfp(F_P) = \bigcup_{n \in \mathbb{N}} F_P^n(\bot) \]
+
+\noindent \textbf{La procedura iterativa:}
+L'iterazione costruisce la semantica passo dopo passo:
+\begin{enumerate}
+    \item \textbf{Passo 0 ($F^0(\bot) = \bot$):} Stato vuoto o non inizializzato.
+    \item \textbf{Passo 1 ($F^1(\bot)$):} Tracce di lunghezza 1 (stati iniziali).
+    \item \textbf{Passo $k$ ($F^k(\bot)$):} Insieme delle esecuzioni parziali di lunghezza fino a $k$.
+\end{enumerate}
+
+Il processo termina quando si raggiunge un punto fisso, ovvero quando l'aggiunta di un nuovo passo non scopre nuove tracce ($F^{k+1} = F^k$).
+
+\vspace{1cm}
+
+\noindent \textbf{Rappresentazione Grafica delle Tracce:}
+
+\begin{center}
+\begin{tikzpicture}[x=1.5cm, y=1cm]
+    % Assi
+    \draw[->] (0,0) -- (6,0) node[right] {Tempo discreto ($t$)};
+    \draw[->] (0,0) -- (0,3.5) node[above] {Stato $x(t)$};
+
+    % Traccia Finita (Verde)
+    \node[circle, fill=mygreen, inner sep=1.5pt, label=left:\textcolor{mygreen}{Inizio}] (s0) at (0,1) {};
+    \node[circle, fill=mygreen, inner sep=1.5pt] (s1) at (1,1.5) {};
+    \node[circle, fill=mygreen, inner sep=1.5pt] (s2) at (2,1.2) {};
+    \node[circle, fill=mygreen, inner sep=1.5pt, label=right:\textcolor{mygreen}{Fine}] (s3) at (3,0.5) {};
+    \draw[->, thick, mygreen] (s0) -- (s1) -- (s2) -- (s3);
+    \node[mygreen] at (3.5, 1) {\small Traccia Finita};
+
+    % Traccia Infinita (Rossa)
+    \node[circle, fill=myred, inner sep=1.5pt, label=left:\textcolor{myred}{Inizio}] (i0) at (0,2.5) {};
+    \node[circle, fill=myred, inner sep=1.5pt] (i1) at (1,2.2) {};
+    \node[circle, fill=myred, inner sep=1.5pt] (i2) at (2,2.8) {};
+    \node[circle, fill=myred, inner sep=1.5pt] (i3) at (3,2.5) {};
+    \node[circle, fill=myred, inner sep=1.5pt] (i4) at (4,2.9) {};
+    \node (i_inf) at (5.5, 2.7) {\dots};
+    \draw[->, thick, myred] (i0) -- (i1) -- (i2) -- (i3) -- (i4) -- (i_inf);
+    \node[myred] at (4, 3.2) {\small Traccia Infinita (Loop)};
+
+    % Griglia temporale
+    \foreach \x in {0,1,2,3,4,5}
+        \draw (\x, 0.1) -- (\x, -0.1) node[below] {\x};
+
+\end{tikzpicture}
+\end{center}
+\end{document}
