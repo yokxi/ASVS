@@ -6,18 +6,15 @@
 \usepackage{amssymb}
 \usepackage{amsthm}
 \usepackage{geometry}
-\usepackage{tikz} % Pacchetto per i grafici
-\usepackage{xcolor} % Pacchetto per i colori
+\usepackage{tikz}
+\usepackage{xcolor}
 
-% Impostazioni margini
 \geometry{a4paper, margin=2.5cm}
 
-% Definizione colori
 \definecolor{myblue}{RGB}{0, 102, 204}
 \definecolor{myred}{RGB}{204, 0, 0}
 \definecolor{mygreen}{RGB}{0, 153, 76}
 
-% Personalizzazione titoli sezioni
 \usepackage{titlesec}
 \titleformat{\section}
 {\color{myblue}\normalfont\Large\bfseries}
@@ -27,7 +24,6 @@
 {\color{myblue}\normalfont\large\bfseries}
 {\color{myblue}\thesubsection}{1em}{}
 
-% Definizione dello stile per le definizioni
 \theoremstyle{definition}
 \newtheorem{definizione}{Definizione}[section]
 
@@ -133,19 +129,16 @@ Esempio del poset $\wp(\{a, b\})$ ordinato per inclusione.
 
 \begin{center}
 \begin{tikzpicture}[node distance=2cm]
-    % Nodi
     \node (top) at (0,3) {$\{a, b\}$ ($\top$)};
     \node (a) at (-2,1.5) {$\{a\}$};
     \node (b) at (2,1.5) {$\{b\}$};
     \node (bot) at (0,0) {$\emptyset$ ($\bot$)};
 
-    % Archi (relazioni di inclusione)
     \draw (bot) -- (a);
     \draw (bot) -- (b);
     \draw (a) -- (top);
     \draw (b) -- (top);
     
-    % Etichette extra
     \node[right of=top, xshift=1cm, text width=4cm, font=\small, align=left, color=myred] {$\leftarrow$ \textbf{Upper Bound} di $\{a\}$ e $\{b\}$ (Unione)};
     \node[right of=bot, xshift=1cm, text width=4cm, font=\small, align=left, color=mygreen] {$\leftarrow$ \textbf{Lower Bound} di $\{a\}$ e $\{b\}$ (Intersezione)};
 \end{tikzpicture}
@@ -177,8 +170,6 @@ Un poset $\langle X, \sqsubseteq \rangle$ è un \textbf{Lattice} se, per \textbf
 \begin{center}
 \begin{tikzpicture}
 
-    % --- PRIMO GRUPPO (Join) ---
-    % Nessuno spostamento necessario, parte da 0
     \begin{scope} 
         \node at (0,0) (j1) {$\bullet$};
         \node at (1,0) (j2) {$\bullet$};
@@ -188,10 +179,7 @@ Un poset $\langle X, \sqsubseteq \rangle$ è un \textbf{Lattice} se, per \textbf
         \node at (0.5, -0.5) {\textit{Join Semi-Lattice}};
     \end{scope}
 
-    % --- SECONDO GRUPPO (Meet) ---
-    % Sposto tutto questo blocco di 4cm a destra
     \begin{scope}[xshift=4cm] 
-        % Nota: ho riscritto le coordinate partendo da 0 per comodità
         \node at (0,1) (m1) {$\bullet$};
         \node at (1,1) (m2) {$\bullet$};
         \node at (0.5,0) (mbot) {$\bullet$};
@@ -200,10 +188,7 @@ Un poset $\langle X, \sqsubseteq \rangle$ è un \textbf{Lattice} se, per \textbf
         \node at (0.5, -0.5) {\textit{Meet Semi-Lattice}};
     \end{scope}
 
-    % --- TERZO GRUPPO (Lattice) ---
-    % Sposto tutto questo blocco di 8cm a destra (4cm + 4cm)
     \begin{scope}[xshift=8cm]
-        % Anche qui coordinate relative (centrate su 0.5 circa)
         \node at (0.5,0.5) (lbot) {$\bullet$};
         \node at (0,1.5) (l1) {$\bullet$};
         \node at (1,1.5) (l2) {$\bullet$};
@@ -232,7 +217,6 @@ Dato un insieme $S$, il \textbf{Set Lattice} è la struttura formata dal suo pow
 
 \begin{center}
 \begin{tikzpicture}[scale=0.8]
-    % Set Lattice di {-1, 0, 1}
     \node (bot) at (0,0) {$\emptyset$};
     
     \node (n1) at (-3,1.5) {$\{-1\}$};
@@ -245,7 +229,6 @@ Dato un insieme $S$, il \textbf{Set Lattice} è la struttura formata dal suo pow
     
     \node (top) at (0,4.5) {$\{-1, 0, 1\}$};
 
-    % Archi
     \draw (bot) -- (n1); \draw (bot) -- (n0); \draw (bot) -- (p1);
     \draw (n1) -- (n10); \draw (n1) -- (n1p1);
     \draw (n0) -- (n10); \draw (n0) -- (n0p1);
@@ -317,60 +300,47 @@ La struttura dell'ordine viene conservata perfettamente nel passaggio da $X$ a $
 \begin{center}
 \begin{tikzpicture}
 
-    % --- GRAFICO 1: MONOTONIA (Sinistra) ---
     \begin{scope}
-        % Titolo
         \node at (2, 4.5) {\textbf{Funzione Monotona}};
         
-        % Dominio X
         \node at (0,3) (x1) {1};
         \node at (0,2) (x0) {0};
         \node at (0,1) (xm1) {-1};
         \draw (xm1) -- (x0) -- (x1);
         \node at (0, 0) {$\langle \mathbb{Z}, \le \rangle$};
 
-        % Codominio Y
         \node at (4,3) (y1) {1};
         \node at (4,2) (y0) {0};
         \node at (4,1) (ym1) {-1};
         \draw (ym1) -- (y0) -- (y1);
         \node at (4, 0) {$\langle \mathbb{Z}, \le \rangle$};
 
-        % Frecce rosse
         \draw[->, color=myred, thick] (x1) -- (y1);
         \draw[->, color=myred, thick] (x0) -- (y1);
         \draw[->, color=myred, thick] (xm1) -- (y0);
 
-        % Descrizione
         \node at (2, -1.5) {\parbox{6cm}{\centering Se $x$ sale, la freccia non scende mai ($f(x_1) \sqsubseteq f(x_2)$).}};
     \end{scope}
 
-    % --- GRAFICO 2: EMBEDDING (Destra) ---
-    % Spostiamo tutto di 7.5cm a destra
     \begin{scope}[xshift=7.5cm]
-        % Titolo
         \node at (2.5, 4.5) {\textbf{Embedding Ordinato}};
         
-        % Dominio X
         \node at (0,3) (x1) {1};
         \node at (0,2) (x0) {0};
         \node at (0,1) (xm1) {-1};
         \draw (xm1) -- (x0) -- (x1);
         \node at (0, 0) {$\langle \mathbb{Z}, \le \rangle$};
 
-        % Codominio Y
         \node at (5,3) (y3) {3};
         \node at (5,2) (y2) {2};
         \node at (5,1) (y1) {1};
         \draw (y1) -- (y2) -- (y3);
         \node at (5, 0) {$\langle \mathbb{Z}, \le \rangle$};
 
-        % Frecce blu
         \draw[->, color=blue, thick] (x1) -- (y3); 
         \draw[->, color=blue, thick] (x0) -- (y2);
         \draw[->, color=blue, thick] (xm1) -- (y1);
 
-        % Descrizione
         \node at (2.5, -1.5) {\parbox{6cm}{\centering Struttura copiata identica ($f(x)=x+2$).\\ Iniettiva e bidirezionale.}};
     \end{scope}
 
@@ -506,11 +476,9 @@ Il processo termina quando si raggiunge un punto fisso, ovvero quando l'aggiunta
 
 \begin{center}
 \begin{tikzpicture}[x=1.5cm, y=1cm]
-    % Assi
     \draw[->] (0,0) -- (6,0) node[right] {Tempo discreto ($t$)};
     \draw[->] (0,0) -- (0,3.5) node[above] {Stato $x(t)$};
 
-    % Traccia Finita (Verde)
     \node[circle, fill=mygreen, inner sep=1.5pt, label=left:\textcolor{mygreen}{Inizio}] (s0) at (0,1) {};
     \node[circle, fill=mygreen, inner sep=1.5pt] (s1) at (1,1.5) {};
     \node[circle, fill=mygreen, inner sep=1.5pt] (s2) at (2,1.2) {};
@@ -518,7 +486,6 @@ Il processo termina quando si raggiunge un punto fisso, ovvero quando l'aggiunta
     \draw[->, thick, mygreen] (s0) -- (s1) -- (s2) -- (s3);
     \node[mygreen] at (3.5, 1) {\small Traccia Finita};
 
-    % Traccia Infinita (Rossa)
     \node[circle, fill=myred, inner sep=1.5pt, label=left:\textcolor{myred}{Inizio}] (i0) at (0,2.5) {};
     \node[circle, fill=myred, inner sep=1.5pt] (i1) at (1,2.2) {};
     \node[circle, fill=myred, inner sep=1.5pt] (i2) at (2,2.8) {};
@@ -528,7 +495,6 @@ Il processo termina quando si raggiunge un punto fisso, ovvero quando l'aggiunta
     \draw[->, thick, myred] (i0) -- (i1) -- (i2) -- (i3) -- (i4) -- (i_inf);
     \node[myred] at (4, 3.2) {\small Traccia Infinita (Loop)};
 
-    % Griglia temporale
     \foreach \x in {0,1,2,3,4,5}
         \draw (\x, 0.1) -- (\x, -0.1) node[below] {\x};
 
