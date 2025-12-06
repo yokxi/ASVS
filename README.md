@@ -2,12 +2,6 @@
 
 Appunti strutturati e completi per il corso di **Analisi Statica e Verifica del Software** (Laurea Magistrale in Scienze Informatiche).
 
-Questo repository contiene definizioni, teoremi ed esempi riguardanti:
-- Teoria dei Domini (Poset, Lattice, CPO)
-- Semantica Denotazionale e Operazionale
-- Teoria del Punto Fisso (Knaster-Tarski, Kleene)
-- Abstract Interpretation
-
 ## 🚀 Come Eseguire
 
 Il progetto è scritto in **LaTeX**. Per generare il file PDF leggibile, segui questi passaggi:
