@@ -1052,4 +1052,104 @@ Questo teorema è potentissimo. Ci dice che non serve trovare \textit{esattament
 
 \examquestion{Enunciare il Teorema di Approssimazione di Tarski e spiegare perché è fondamentale per la terminazione dell'analisi statica (suggerimento: widening).}
 
+\newpage
+
+\section{Il Problema del Filter (Assume)}
+
+Nell'analisi statica classica, quando il programma incontra una diramazione condizionale (es. \texttt{if (x > 0)}), l'analizzatore deve dividere il flusso in due rami:
+\begin{enumerate}
+    \item Il ramo \textbf{True}, dove assumiamo che $x > 0$.
+    \item Il ramo \textbf{False}, dove assumiamo che $x \le 0$ (la negazione).
+\end{enumerate}
+
+Tradizionalmente, questo viene fatto usando l'operatore \texttt{filter} (o \texttt{assume}).
+
+\begin{definizione}[\textbf{Filter Operator}]
+\[ \text{filter}: A \times \text{Pred} \to A \]
+Dato uno stato astratto $A$ e un predicato $c$, restituisce un nuovo stato astratto raffinato in cui $c$ è vero.
+\end{definizione}
+
+\subsection{Inefficienze dell'approccio classico}
+Per gestire un \texttt{if}, l'analizzatore deve fare queste operazioni:
+1.  \textbf{Copia:} Duplicare lo stato astratto $A$ in memoria (perché serve sia per il ramo True che per il False).
+2.  \textbf{Filter Positivo:} Calcolare \texttt{filter}$(A, c)$.
+3.  \textbf{Filter Negativo:} Calcolare \texttt{filter}$(A, \neg c)$.
+
+\begin{spiegazione}
+Immagina di dover dividere un mazzo di carte in "Rosse" e "Nere".
+L'approccio classico è:
+1. Fai una fotocopia dell'intero mazzo.
+2. Sul mazzo originale, scorri e butta via le Nere (tieni le Rosse).
+3. Sulla fotocopia, scorri e butta via le Rosse (tieni le Nere).
+È uno spreco! Hai duplicato il lavoro e lo spazio.
+\end{spiegazione}
+
+\section{L'Operatore Split}
+
+Per risolvere queste inefficienze, è stato introdotto l'operatore \textbf{Split}.
+
+\begin{definizione}[\textbf{Split Operator}]
+L'operatore split è una funzione che processa il vincolo e la sua negazione in un unico passaggio atomico:
+\[ \text{split}: A \times \text{Pred} \to A \times A \]
+Prende in input uno stato astratto e un predicato, e restituisce una \textbf{coppia} di stati: $(A_{true}, A_{false})$.
+\end{definizione}
+
+\subsection{Vantaggi dello Split}
+L'uso di \texttt{split} porta due grandi vantaggi:
+\begin{itemize}
+    \item \textbf{Eliminazione del lavoro duplicato:} Il dominio astratto (es. Poliedri) può calcolare le due uscite simultaneamente, riutilizzando i calcoli intermedi.
+    \item \textbf{Gestione della memoria:} Non serve copiare esplicitamente lo stato astratto prima dell'operazione. La gestione della memoria è delegata internamente alla libreria del dominio (che può essere più intelligente e fare copie "lazy" o parziali).
+\end{itemize}
+
+\begin{spiegazione}
+Tornando all'esempio delle carte: lo Split prende il mazzo e, in un solo passaggio, sposta le Rosse a sinistra e le Nere a destra. Nessuna fotocopia inutile, nessun doppio passaggio.
+\end{spiegazione}
+
+\section{Implementazione nel CFG}
+
+L'adozione dello Split richiede una modifica strutturale al \textbf{Control Flow Graph (CFG)} usato dall'analizzatore.
+
+\begin{center}
+\begin{tikzpicture}[node distance=2cm, auto]
+    % Standard CFG
+    \node (head1) [draw, rectangle] {Entry};
+    \node (cond1) [draw, diamond, aspect=2, below of=head1] {\texttt{if (cond)}};
+    \node (true1) [draw, rectangle, below left=1cm and 1cm of cond1] {\texttt{assume(cond)}};
+    \node (false1) [draw, rectangle, below right=1cm and 1cm of cond1] {\texttt{assume(!cond)}};
+    
+    \draw[->] (head1) -- (cond1);
+    \draw[->] (cond1) -- node[left] {T} (true1);
+    \draw[->] (cond1) -- node[right] {F} (false1);
+    
+    \node at (0, -4.5) {\textbf{Standard CFG (Filter)}};
+
+    % Split CFG
+    \node (head2) [draw, rectangle, right=6cm of head1] {Entry};
+    \node (split) [draw, rectangle, double, below of=head2, minimum width=3cm] {\texttt{split(cond)}};
+    \node (true2) [draw, rectangle, below left=1cm and 0.5cm of split] {True Branch};
+    \node (false2) [draw, rectangle, below right=1cm and 0.5cm of split] {False Branch};
+    
+    \draw[->] (head2) -- (split);
+    \draw[->] (split.south west) -- (true2);
+    \draw[->] (split.south east) -- (false2);
+    
+    \node at (6, -4.5) {\textbf{Optimized CFG (Split)}};
+\end{tikzpicture}
+\end{center}
+
+\begin{itemize}
+    \item \textbf{Approccio Classico:} Il nodo condizionale ha due archi uscenti. Su ogni arco c'è un'istruzione \texttt{assume} (filter) separata. L'analizzatore deve visitare prima un arco, poi tornare indietro, copiare lo stato e visitare l'altro.
+    \item \textbf{Approccio Split:} Il nodo condizionale è sostituito da un blocco \texttt{split(cond)}. Questo blocco calcola internamente le due uscite e le propaga direttamente ai successori.
+\end{itemize}
+
+\section{Valutazione Sperimentale}
+
+L'approccio è stato implementato in framework reali (come \textit{LiSA} o \textit{Crab}) e testato. I risultati mostrano:
+\begin{itemize}
+    \item \textbf{Miglioramento del tempo di analisi:} Riduzione significativa dei tempi di calcolo.
+    \item \textbf{Riduzione della memoria:} Minore picco di utilizzo della RAM grazie alla gestione ottimizzata delle copie degli stati.
+\end{itemize}
+
+\examquestion{Spiegare la differenza concettuale e operativa tra l'operatore \texttt{filter} e l'operatore \texttt{split}. Perché \texttt{split} è considerato un'ottimizzazione?}
+
 \end{document}
