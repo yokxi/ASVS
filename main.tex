@@ -8,6 +8,7 @@
 \usepackage{geometry}
 \usepackage{tikz}
 \usepackage{xcolor}
+\usepackage{graphicx}
 
 \geometry{a4paper, margin=2.5cm}
 
@@ -500,4 +501,208 @@ Il processo termina quando si raggiunge un punto fisso, ovvero quando l'aggiunta
 
 \end{tikzpicture}
 \end{center}
+\newpage
+
+% --- Nuove Definizioni per il Capitolo ---
+\definecolor{bg_gray}{RGB}{245, 245, 245}
+
+\newtheorem{esempio}{Esempio}[section]
+
+\newenvironment{spiegazione}
+{\vspace{0.2cm}\noindent\textbf{\textcolor{mygreen}{In parole semplici:}}\itshape}
+{\vspace{0.2cm}}
+
+\newcommand{\examquestion}[1]{
+    \begin{center}
+    \fcolorbox{myred}{bg_gray}{
+        \parbox{0.9\textwidth}{
+            \textbf{\textcolor{myred}{Possibile domanda d'esame:}}\\
+            #1
+        }
+    }
+    \end{center}
+}
+
+\section{Panoramica di un Analizzatore Statico}
+
+Un analizzatore statico è un software complesso composto da diversi moduli che lavorano insieme per trasformare il codice sorgente in risultati di analisi (come la segnalazione di bug o garanzie di correttezza).
+
+\subsection{Componenti Principali}
+
+Il flusso di lavoro di un analizzatore statico segue questi passaggi logici:
+
+\begin{enumerate}
+    \item \textbf{Programma (Input):} Il codice sorgente che si vuole analizzare.
+    \item \textbf{IR (Rappresentazione Interna):} Il codice viene tradotto in una forma intermedia (es. Control Flow Graph) più facile da manipolare per l'analisi.
+    \item \textbf{Engine di Analisi:} Il "cuore" del sistema. Gestisce l'algoritmo di punto fisso, la risoluzione delle chiamate a funzione e la gestione della memoria.
+    \item \textbf{Dominio Astratto:} L'astrazione dei dati su cui lavora l'algoritmo (es. Intervalli, Segni, Costanti).
+    \item \textbf{Risultato:} L'output dell'analisi (warnings, report).
+\end{enumerate}
+
+\begin{spiegazione}
+L'idea fondamentale è la \textbf{modularità}. Se vuoi analizzare un nuovo linguaggio (es. passare da Java a C++) o cambiare il tipo di analisi (es. da intervalli a segni), non devi riscrivere tutto. I componenti devono essere indipendenti: l'algoritmo di punto fisso non deve sapere che linguaggio stai analizzando, deve solo lavorare sul grafo astratto (IR).
+\end{spiegazione}
+
+\begin{center}
+    \includegraphics[width=0.8\textwidth]{static_analyzer.png}
+\end{center}
+
+\examquestion{Quali sono i componenti principali di un analizzatore statico e perché è importante che siano modulari?}
+
+\newpage
+
+\section{LiSA (Library for Static Analysis)}
+
+\textbf{LiSA} è una libreria open-source scritta in Java per costruire analizzatori statici basati sull'Interpretazione Astratta.
+
+\subsection{Architettura e Flusso di Lavoro}
+
+In LiSA, il processo di analisi avviene attraverso i seguenti step:
+
+\begin{enumerate}
+    \item \textbf{Front-end:} Un componente specifico per ogni linguaggio (Java, C, IMP, ecc.) traduce il codice sorgente nei CFG (Control Flow Graphs) di LiSA.
+    \item \textbf{LiSA Core:} Il motore di analisi generico che prende i CFG e li analizza. Include:
+    \begin{itemize}
+        \item \textbf{CFG Fixpoint:} L'algoritmo che calcola il punto fisso sul grafo.
+        \item \textbf{Statement Semantics:} La logica per interpretare le istruzioni.
+        \item \textbf{Domain:} L'implementazione dei domini astratti (es. Intervalli).
+        \item \textbf{Memory Handling:} La gestione della memoria (heap, stack).
+    \end{itemize}
+    \item \textbf{Checks:} Controlli finali sui risultati per generare warnings.
+\end{enumerate}
+
+\subsubsection*{Approfondimento: La Metafora della Catena di Montaggio}
+
+Immagina LiSA come una \textbf{catena di montaggio universale} per analizzare programmi. Il suo obiettivo è prendere codice scritto in lingue diverse (Java, C, Python) e capire se è corretto, usando sempre lo stesso "macchinario" centrale.
+
+Ecco la spiegazione dettagliata dei tre step:
+
+\paragraph{1. Front-end: Il Traduttore Universale}
+Il problema principale dell'analisi statica è che ogni linguaggio di programmazione ha una sintassi diversa. Scrivere un analizzatore per Java e uno per C richiederebbe di riscrivere tutto da zero due volte.
+
+\begin{itemize}
+    \item \textbf{Cosa fa:} Il Front-end agisce come un interprete. Prende il codice sorgente (il file \texttt{.java} o \texttt{.c}) e lo traduce in un linguaggio che LiSA capisce: il \textbf{CFG (Control Flow Graph)}.
+    \item \textbf{Perché è utile:} Una volta che il codice è diventato un CFG di LiSA, il resto dell'analizzatore non deve più preoccuparsi se l'originale era Java o C. Vede solo nodi (istruzioni) e archi (flusso).
+\end{itemize}
+
+\paragraph{2. LiSA Core: Il Motore di Analisi}
+Questo è il cervello del sistema. Una volta ricevuto il CFG "tradotto", il Core deve eseguirlo in modo astratto per trovare le proprietà del programma. È composto da quattro pezzi fondamentali che lavorano insieme:
+
+\begin{itemize}
+    \item \textbf{A. CFG Fixpoint (L'Algoritmo):} Immagina questo componente come il \textbf{direttore dei lavori}.
+    \begin{itemize}
+        \item Il suo compito è percorrere il grafo (CFG) e propagare le informazioni da un nodo all'altro.
+        \item Usa un algoritmo iterativo (basato sulla \textit{worklist}). Continua a far girare le informazioni nel grafo finché queste non si stabilizzano (raggiungono il \textit{punto fisso}), cioè finché non cambiano più.
+    \end{itemize}
+
+    \item \textbf{B. Statement Semantics (Il Dizionario dei Significati):} Il grafo contiene istruzioni generiche. Questo componente spiega al motore \textit{cosa} significano quelle istruzioni.
+    \begin{itemize}
+        \item \textit{Esempio:} Se nel grafo c'è un nodo che dice \texttt{x = a + b}, la \textit{Statement Semantics} dice: "Attenzione, questo simbolo \texttt{+} significa 'somma aritmetica', non concatenazione". Traduce la sintassi in un'operazione logica che il dominio può capire.
+    \end{itemize}
+
+    \item \textbf{C. Domain (La Lente di Ingrandimento):} Questo è il componente che decide \textbf{cosa} stiamo osservando dei dati.
+    \begin{itemize}
+        \item Il motore chiede: "Ho la variabile \texttt{x}, come la rappresento?".
+        \item Se il Dominio è \textbf{Intervalli}, risponde: "Rappresentala come \texttt{[min, max]}".
+        \item Se il Dominio è \textbf{Segni}, risponde: "Dimmi solo se è \texttt{+} o \texttt{-}".
+        \item È qui che avvengono i calcoli veri (es. \texttt{[1, 5] + [2, 3] = [3, 8]}).
+    \end{itemize}
+
+    \item \textbf{D. Memory Handling (La Mappa):} Questo componente gestisce \textbf{dove} sono salvati i dati.
+    \begin{itemize}
+        \item In un programma reale, abbiamo variabili locali (nello stack) e oggetti dinamici (nello heap).
+        \item LiSA deve sapere che la variabile \texttt{x} in una funzione è diversa dalla variabile \texttt{x} in un'altra, o che \texttt{p.val} si riferisce a una specifica cella di memoria. Il \textit{Memory Handling} trasforma nomi complessi in indirizzi astratti univoci.
+    \end{itemize}
+\end{itemize}
+
+\paragraph{3. Checks: L'Ispettore Finale}
+Una volta che il Core ha finito di girare, abbiamo un grafo "decorato": ogni punto del programma ha associato uno stato astratto (es. "qui \texttt{x} vale \texttt{[0, 10]}").
+
+\begin{itemize}
+    \item \textbf{Cosa fa:} I \textit{Checks} scorrono questi risultati e verificano se violano delle regole.
+    \item \textbf{Esempio:} Se c'è un'istruzione \texttt{y = 10 / x} e l'analisi ha calcolato che in quel punto \texttt{x} vale \texttt{[0, 5]}, il Check vede che lo \texttt{0} è incluso nell'intervallo e lancia un allarme (Warning): "Possibile divisione per zero!".
+\end{itemize}
+
+\begin{esempio}[\textbf{Riassunto pratico}]
+Immagina di analizzare \texttt{x = 10 / y}:
+\begin{enumerate}
+    \item \textbf{Front-end:} Legge il file e crea un grafo con un nodo per la divisione.
+    \item \textbf{LiSA Core:}
+    \begin{itemize}
+        \item \textbf{Fixpoint:} Arriva al nodo della divisione portandosi dietro le informazioni precedenti.
+        \item \textbf{Memory:} Capisce quale \texttt{x} e quale \texttt{y} stiamo usando.
+        \item \textbf{Semantics:} Capisce che \texttt{/} è una divisione matematica.
+        \item \textbf{Domain:} Calcola il risultato astratto (es. \texttt{Intervallo(10) / Intervallo(y)}).
+    \end{itemize}
+    \item \textbf{Checks:} Controlla se il divisore \texttt{y} poteva essere \texttt{0}. Se sì, ti avvisa.
+\end{enumerate}
+\end{esempio}
+
+\subsection{Struttura del CFG in LiSA}
+
+Un Control Flow Graph in LiSA è costituito da:
+\begin{itemize}
+    \item \textbf{Nodi:} Rappresentano gli statement (istruzioni) del programma.
+    \item \textbf{Archi:} Collegano i nodi e rappresentano il flusso. Possono essere:
+    \begin{itemize}
+        \item \textbf{Sequential Edge:} Flusso normale sequenziale.
+        \item \textbf{True Edge:} Preso quando una condizione è vera (ramo \texttt{then}).
+        \item \textbf{False Edge:} Preso quando una condizione è falsa (ramo \texttt{else}).
+    \end{itemize}
+\end{itemize}
+
+\begin{spiegazione}
+Usare i CFG permette a LiSA di "dimenticare" la sintassi specifica del linguaggio originale (es. come si scrive un ciclo \texttt{while} in C vs Python) e lavorare su una struttura a grafo unificata.
+\end{spiegazione}
+
+\examquestion{Descrivere i tipi di archi presenti in un CFG di LiSA e la loro funzione.}
+
+\newpage
+
+\section{Sintassi vs Semantica}
+
+Un concetto chiave in LiSA è la distinzione tra lo statement sintattico e il suo significato semantico.
+
+\begin{definizione}[\textbf{Rewriting Semantico}]
+Diverse operazioni sintattiche possono avere lo stesso significato semantico. LiSA utilizza un linguaggio interno di \textbf{Espressioni Simboliche} per uniformare queste differenze.
+\end{definizione}
+
+\textbf{Esempio:}
+In Java, l'operatore \texttt{+} può significare:
+\begin{itemize}
+    \item Somma aritmetica: \texttt{1 + 2}
+    \item Concatenazione di stringhe: \texttt{"a" + "b"}
+\end{itemize}
+Il dominio astratto non deve preoccuparsi della sintassi. LiSA traduce lo statement in un'espressione simbolica "atomica":
+\begin{itemize}
+    \item Se sono numeri $\rightarrow$ \texttt{ArithmSum}
+    \item Se sono stringhe $\rightarrow$ \texttt{StringConcat}
+\end{itemize}
+In questo modo, il dominio astratto implementa solo la logica per \texttt{ArithmSum} o \texttt{StringConcat}, indipendentemente da come erano scritte nel codice originale.
+
+\examquestion{Perché LiSA distingue tra lo statement sintattico e la sua semantica tramite espressioni simboliche? Fornire un esempio.}
+
+\section{Implementazione dell'Analisi Dataflow}
+
+LiSA fornisce un'architettura specifica per implementare analisi dataflow (come quelle viste nel Cap. 4).
+
+\subsection{Algoritmo Generico (Worklist)}
+
+Le analisi dataflow in LiSA sfruttano un algoritmo di punto fisso generico basato su \textbf{worklist}. L'implementazione è divisa in due classi principali per separare la logica:
+
+\begin{itemize}
+    \item \textbf{DataflowDomain:} Gestisce la logica generale del reticolo e l'operazione di Join.
+    \begin{itemize}
+        \item \texttt{PossibleForwardDataflowDomain}: Implementa analisi \textbf{May} (usa l'Unione $\cup$).
+        \item \texttt{DefiniteForwardDataflowDomain}: Implementa analisi \textbf{Must} (usa l'Intersezione $\cap$).
+    \end{itemize}
+    \item \textbf{DataflowElement:} Rappresenta il singolo elemento tracciato (es. una variabile viva, un'espressione disponibile). Definisce le operazioni specifiche \textbf{Gen} e \textbf{Kill}.
+\end{itemize}
+
+\begin{spiegazione}
+Questa struttura permette di implementare una nuova analisi (es. Reaching Definitions) scrivendo solo la logica di Gen/Kill nel \texttt{DataflowElement}, mentre il \texttt{DataflowDomain} gestisce automaticamente il calcolo del punto fisso e la propagazione nel grafo.
+\end{spiegazione}
+
+\textbf{Nota:} Attualmente LiSA supporta nativamente solo analisi \textbf{Forward}.
+
 \end{document}
