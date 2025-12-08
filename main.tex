@@ -7,7 +7,11 @@
 \usepackage{amsthm}
 \usepackage{geometry}
 \usepackage{tikz}
+\usetikzlibrary{shapes, arrows, positioning, calc, patterns}
 \usepackage{xcolor}
+\usepackage{listings}
+\usepackage{framed}
+\usepackage{stmaryrd}
 \usepackage{graphicx}
 
 \geometry{a4paper, margin=2.5cm}
@@ -704,5 +708,144 @@ Questa struttura permette di implementare una nuova analisi (es. Reaching Defini
 \end{spiegazione}
 
 \textbf{Nota:} Attualmente LiSA supporta nativamente solo analisi \textbf{Forward}.
+
+\newpage
+
+\section{Perché Approssimare?}
+
+La verifica del software ha un problema fondamentale: il \textbf{Teorema di Rice}. Esso afferma che qualsiasi proprietà non banale (interessante) del comportamento di un programma è \textbf{indecidibile}.
+
+\begin{spiegazione}
+Non esiste e non esisterà mai un programma che possa prendere un qualsiasi codice e dirti con certezza assoluta "Sì, è corretto" o "No, ha un bug" in tempo finito. Se vogliamo un'analisi automatica che termini sempre, dobbiamo rinunciare alla perfezione e accettare l'\textbf{approssimazione}.
+\end{spiegazione}
+
+\subsection{Soundness e Decidibilità}
+
+L'obiettivo dell'analisi statica è trovare un'approssimazione $\llbracket P \rrbracket^\sharp$ della semantica reale $\llbracket P \rrbracket$ che soddisfi due requisiti:
+
+\begin{enumerate}
+    \item \textbf{Soundness (Correttezza):} $\llbracket P \rrbracket \subseteq \llbracket P \rrbracket^\sharp$. L'approssimazione deve includere \textit{tutti} i comportamenti reali (anche a costo di includerne alcuni che non esistono).
+    \item \textbf{Decidibilità:} Verificare le proprietà sull'approssimazione deve essere possibile in tempo finito.
+\end{enumerate}
+
+\section{Astrazione: Oggetti e Proprietà}
+
+L'astrazione è il processo di sostituire oggetti concreti con descrizioni semplificate (proprietà).
+
+\subsection{Reticolo delle Proprietà}
+
+Nel mondo concreto, una proprietà è semplicemente un \textbf{insieme di oggetti} che la soddisfano.
+Esempio: La proprietà "essere pari" è l'insieme $\{ \dots, -2, 0, 2, 4, \dots \}$.
+
+\begin{definizione}[\textbf{Reticolo delle Proprietà}]
+L'insieme di tutte le possibili proprietà $\wp(\Sigma)$ forma un reticolo completo dove:
+\begin{itemize}
+    \item L'ordine parziale $\subseteq$ è l'implicazione logica.
+    \item Il Join $\cup$ è l'unione (disgiunzione logica).
+    \item Il Meet $\cap$ è l'intersezione (congiunzione logica).
+    \item $\top = \Sigma$ (Vero/Tutto), $\bot = \emptyset$ (Falso/Impossibile).
+\end{itemize}
+\end{definizione}
+
+\newpage
+
+\section{Direzione dell'Astrazione}
+
+Quando approssimiamo un insieme concreto $P$ con un insieme astratto $P^\sharp$, possiamo sbagliare "per eccesso" o "per difetto".
+
+\subsection{1. Approssimazione dal Basso (Under-Approximation)}
+\[ P^\sharp \subseteq P \]
+L'insieme astratto è più piccolo del reale.
+\begin{itemize}
+    \item Se $x \in P^\sharp \implies$ Sicuramente $x \in P$ (**YES**).
+    \item Se $x \notin P^\sharp \implies$ Non so (**Don't Know**).
+\end{itemize}
+\textbf{Uso:} Testing e Bug Finding. Se trovo un bug nell'astrazione, il bug esiste davvero. Non posso garantire la sicurezza (potrei mancare dei bug fuori da $P^\sharp$).
+
+\subsection{2. Approssimazione dall'Alto (Over-Approximation)}
+\[ P \subseteq P^\sharp \]
+L'insieme astratto è più grande del reale (include comportamenti "spuri").
+\begin{itemize}
+    \item Se $x \notin P^\sharp \implies$ Sicuramente $x \notin P$ (**NO** - Sicuro).
+    \item Se $x \in P^\sharp \implies$ Potrebbe essere vero o un Falso Positivo (**Don't Know**).
+\end{itemize}
+\textbf{Uso:} \textbf{Safety Verification} (Analisi Statica classica). Se l'astrazione dice "nessun errore", il programma è sicuro. Se segnala un errore, potrebbe essere un falso allarme.
+
+\begin{center}
+\begin{tikzpicture}
+    % Under
+    \draw[fill=gray!20] (0,0) circle (1.5cm);
+    \node at (0, 1.8) {Concreto $P$};
+    \draw[fill=mygreen!30] (0,0) circle (0.8cm);
+    \node at (0,0) {$P^\sharp \subseteq P$};
+    \node at (0, -2) {\textbf{Dal Basso (Bug Finding)}};
+
+    % Over
+    \begin{scope}[xshift=5cm]
+    \draw[fill=myred!20] (0,0) circle (2cm);
+    \node at (0, 2.2) {Astratto $P^\sharp$};
+    \draw[fill=gray!50] (0,0) circle (1.2cm);
+    \node at (0,0) {$P \subseteq P^\sharp$};
+    \node at (0, -2) {\textbf{Dall'Alto (Safety)}};
+    \end{scope}
+\end{tikzpicture}
+\end{center}
+
+\examquestion{Qual è la differenza tra approssimazione dal basso e dall'alto? Quale delle due garantisce la "Soundness" per la verifica di sicurezza e perché?}
+
+\newpage
+
+\section{Esempio: Il Dominio dei Segni}
+
+Un esempio classico di astrazione dall'alto per i numeri interi.
+
+\begin{definizione}[\textbf{Dominio dei Segni}]
+Il dominio astratto è $D^\sharp = \{ \bot, (-), (0), (+), \top \}$.
+\begin{itemize}
+    \item $\alpha(\{1, 5, 100\}) = (+)$
+    \item $\alpha(\{-5, 2\}) = \top$ (Non so il segno, contiene sia positivi che negativi).
+\end{itemize}
+\end{definizione}
+
+\noindent \textbf{Perdita di precisione:}
+Le operazioni devono essere ridefinite per mantenere la soundness.
+\begin{itemize}
+    \item $(+) +^\sharp (+) = (+)$ (Preciso).
+    \item $(+) +^\sharp (-) = \top$ (Impreciso: $5 + (-2) > 0$, ma $2 + (-5) < 0$. Non possiamo saperlo).
+\end{itemize}
+
+\section{Gerarchia delle Semantiche}
+
+L'analisi statica può essere vista come una serie di astrazioni successive, partendo dalla realtà più dettagliata fino a quella più astratta.
+
+\subsection{1. Semantica delle Tracce (Trace Semantics)}
+È la realtà completa. Una traccia è una sequenza di stati nel tempo (es. $x_0 \to x_1 \to x_2 \dots$). Distingue ogni singola esecuzione e l'ordine temporale degli eventi. È incalcolabile.
+
+\subsection{2. Semantica Collettrice (Collecting Semantics)}
+\textbf{Astrazione:} Dimentichiamo l'ordine temporale e le relazioni tra stati successivi.
+Per ogni punto del programma (riga di codice), raccogliamo l'insieme di \textbf{tutti} i possibili stati che possono verificarsi lì, indipendentemente da come ci siamo arrivati.
+
+\begin{spiegazione}
+Immagina di scattare una foto a tutte le possibili variabili ogni volta che il programma passa per la riga 10. Mettiamo tutti questi valori in un sacco. Perdiamo la storia ("ci sono arrivato dopo il ciclo o prima?"), ma sappiamo quali valori sono possibili. Questo introduce "rumore" o tracce spurie.
+\end{spiegazione}
+
+\subsection{3. Semantica Astratta (Abstract Semantics)}
+\textbf{Astrazione:} Sostituiamo gli insiemi di stati (che possono essere infiniti o complessi) con oggetti geometrici o logici calcolabili (Intervalli, Segni, Poliedri).
+
+\examquestion{Cosa si intende per Semantica Collettrice e quale informazione si perde passando dalla Semantica delle Tracce a quest'ultima?}
+
+\noindent\textbf{Risposta:}
+
+La Semantica Collettrice associa ad ogni punto del programma (es. riga di codice o nodo del CFG) l'insieme di tutti gli stati di memoria raggiungibili in quel punto in qualsiasi possibile esecuzione. Matematicamente, dimentica la dimensione temporale $t$ e proietta gli stati sulla struttura del programma (i punti di controllo).
+
+\vspace{0.3cm}
+\noindent\textbf{Quale informazione si perde?}
+
+Passando dalla Semantica delle Tracce a quella Collettrice si perde l'ordine temporale e le relazioni tra stati successivi.
+
+\begin{itemize}
+    \item \textbf{Perdita della Storia:} Non sappiamo più "da dove veniamo". Se lo stato $S_1$ e lo stato $S_2$ sono entrambi possibili alla riga $L$, la semantica collettrice non ci dice se $S_1$ appare sempre prima di $S_2$ o viceversa.
+    \item \textbf{Tracce Spurie (Rumore):} Poiché perdiamo il legame causa-effetto tra uno stato e il successivo, l'analisi potrebbe ammettere dei cammini "fantasma" (\textit{spurious traces}) che saltano da uno stato valido all'altro in modi che nella realtà non avvengono mai (es. saltare dallo stato dell'iterazione 10 allo stato dell'iterazione 2).
+\end{itemize}
 
 \end{document}
