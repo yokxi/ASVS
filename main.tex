@@ -31,6 +31,7 @@
 
 \theoremstyle{definition}
 \newtheorem{definizione}{Definizione}[section]
+\newtheorem{teorema}{Teorema}[section]
 
 \title{\textbf{\textcolor{myblue}{Definizioni Fondamentali}}\\ \large Analisi Statica e Verifica del Software}
 \author{}
@@ -847,5 +848,208 @@ Passando dalla Semantica delle Tracce a quella Collettrice si perde l'ordine tem
     \item \textbf{Perdita della Storia:} Non sappiamo più "da dove veniamo". Se lo stato $S_1$ e lo stato $S_2$ sono entrambi possibili alla riga $L$, la semantica collettrice non ci dice se $S_1$ appare sempre prima di $S_2$ o viceversa.
     \item \textbf{Tracce Spurie (Rumore):} Poiché perdiamo il legame causa-effetto tra uno stato e il successivo, l'analisi potrebbe ammettere dei cammini "fantasma" (\textit{spurious traces}) che saltano da uno stato valido all'altro in modi che nella realtà non avvengono mai (es. saltare dallo stato dell'iterazione 10 allo stato dell'iterazione 2).
 \end{itemize}
+
+\newpage
+
+\section{Il Ponte tra Concreto e Astratto}
+
+Per analizzare un programma, dobbiamo muoverci tra due mondi:
+\begin{enumerate}
+    \item \textbf{Dominio Concreto ($C$):} La realtà precisa ma incalcolabile. Esempio: l'insieme dei numeri interi $\wp(\mathbb{Z})$.
+    \item \textbf{Dominio Astratto ($A$):} La semplificazione calcolabile. Esempio: il dominio dei Segni o degli Intervalli.
+\end{enumerate}
+
+Per passare da un mondo all'altro senza fare errori logici, usiamo due funzioni speciali chiamate $\alpha$ e $\gamma$.
+
+\subsection{Le Funzioni $\alpha$ e $\gamma$}
+
+\begin{definizione}[\textbf{Astrazione} $\alpha$]
+$\alpha: C \to A$. Dato un insieme di valori concreti, restituisce il valore astratto "migliore" che li descrive.
+\[ \alpha(\{1, 2, 5\}) = [1, 5] \quad (\text{negli Intervalli}) \]
+\end{definizione}
+
+\begin{definizione}[\textbf{Concretizzazione} $\gamma$]
+$\gamma: A \to C$. Dato un valore astratto, restituisce l'insieme di \textbf{tutti} i valori concreti che esso rappresenta.
+\[ \gamma([1, 5]) = \{1, 2, 3, 4, 5\} \]
+\end{definizione}
+
+\begin{spiegazione}
+Nota che $\gamma$ restituisce $\{1, 2, 3, 4, 5\}$ anche se l'insieme originale era solo $\{1, 2, 5\}$. I numeri $3$ e $4$ sono "rumore" o approssimazione introdotta dall'astrazione. Non possiamo evitarlo se vogliamo semplificare.
+\end{spiegazione}
+
+\section{Connessione di Galois (GC)}
+
+Una Connessione di Galois è la formalizzazione matematica che garantisce che $\alpha$ e $\gamma$ siano "sincronizzate" correttamente per garantire la \textbf{Soundness} (sicurezza).
+
+\begin{definizione}[\textbf{Connessione di Galois}]
+Due posets $\langle C, \subseteq \rangle$ e $\langle A, \sqsubseteq \rangle$ formano una Connessione di Galois $(\alpha, \gamma)$ se valgono due proprietà:
+
+\begin{enumerate}
+    \item \textbf{$\gamma \circ \alpha$ è Estensiva:} $\forall c \in C, \quad c \subseteq \gamma(\alpha(c))$
+    \item \textbf{$\alpha \circ \gamma$ è Riduttiva:} $\forall a \in A, \quad \alpha(\gamma(a)) \sqsubseteq a$
+\end{enumerate}
+Inoltre, entrambe le funzioni devono essere \textbf{monotone} (preservare l'ordine).
+\end{definizione}
+
+\subsection{Spiegazione Intuitiva delle Proprietà}
+
+\textbf{1. Estensività ($\gamma \circ \alpha \supseteq Id$): "Non perdere la verità"}
+Se prendo i dati reali ($c$), li astraggo ($\alpha$) e poi torno indietro al concreto ($\gamma$), l'insieme che ottengo deve \textbf{contenere} i dati di partenza.
+\begin{itemize}
+    \item $c = \{1, 5\}$
+    \item $\alpha(c) = [1, 5]$
+    \item $\gamma([1, 5]) = \{1, 2, 3, 4, 5\}$
+\end{itemize}
+$\{1, 5\} \subseteq \{1, 2, 3, 4, 5\}$. La proprietà è rispettata. Se mancasse il 5, l'analisi sarebbe sbagliata (unsound).
+
+\textbf{2. Riduttività ($\alpha \circ \gamma \sqsubseteq Id$): "Non perdere precisione inutilmente"}
+Se parto da un'astrazione ($a$), la concretizzo ($\gamma$) e poi la ri-astraggo ($\alpha$), non devo ottenere un'astrazione peggiore (più grande) di quella di partenza.
+\begin{itemize}
+    \item $a = [1, 5]$
+    \item $\gamma(a) = \{1, 2, 3, 4, 5\}$
+    \item $\alpha(\{1, \dots, 5\}) = [1, 5]$
+\end{itemize}
+$[1, 5] \sqsubseteq [1, 5]$. Sono uguali, quindi la proprietà è rispettata.
+
+\begin{center}
+\begin{tikzpicture}
+    % Left side (Concrete)
+    \draw (0,0) ellipse (1.2cm and 2cm);
+    \node at (0, 2.5) {Concreto $C$};
+    \node (c) at (0,0) {$\bullet$};
+    \node [below] at (c) {$c$};
+    
+    % Right side (Abstract)
+    \draw (6,0) ellipse (1.2cm and 2cm);
+    \node at (6, 2.5) {Astratto $A$};
+    \node (a) at (6,0) {$\bullet$};
+    \node [below] at (a) {$a$};
+
+    % Arrows
+    \draw[->, bend left, thick, blue] (c) to node[above] {$\alpha$} (a);
+    \draw[->, bend left, thick, red] (a) to node[below] {$\gamma$} (c);
+    
+    % Property text
+    \node at (3, -3) {$\alpha(c) \sqsubseteq a \iff c \subseteq \gamma(a)$};
+\end{tikzpicture}
+\end{center}
+
+\newpage
+
+\section{Galois Insertion (GI)}
+
+Spesso nel dominio astratto ci sono elementi "inutili" o ridondanti. Quando li rimuoviamo tutti, otteniamo una forma speciale di connessione.
+
+\begin{definizione}[\textbf{Galois Insertion}]
+Una Connessione di Galois è una \textbf{Insertion} se $\alpha \circ \gamma$ è l'\textbf{Identità}:
+\[ \forall a \in A, \quad \alpha(\gamma(a)) = a \]
+\end{definizione}
+
+\begin{spiegazione}
+Significa che ogni elemento del dominio astratto rappresenta un insieme di valori concreti unico. Non ci sono due etichette diverse per dire la stessa cosa.
+Esempio: Se avessi nel dominio astratto sia $[1, 2]$ che un simbolo speciale $K$ che vuol dire "intervallo tra 1 e 2", $\gamma$ mapperebbe entrambi a $\{1, 2\}$. Ri-astraendo $\{1, 2\}$ però $\alpha$ dovrebbe sceglierne uno solo. Se $\alpha(\gamma(K)) = [1, 2] \neq K$, non è una Insertion.
+\end{spiegazione}
+
+\section{Best Abstraction (Migliore Astrazione)}
+
+Una proprietà fondamentale garantita dalle Connessioni di Galois è l'esistenza della \textbf{Best Abstraction}.
+
+\begin{definizione}
+Per ogni insieme concreto $c \in C$, l'elemento $\alpha(c)$ è la \textbf{migliore} (più precisa) approssimazione possibile di $c$ nel dominio $A$.
+\[ \forall a \in A, \quad c \subseteq \gamma(a) \implies \alpha(c) \sqsubseteq a \]
+\end{definizione}
+
+\subsection{Quando la Best Abstraction non esiste?}
+Ci sono casi in cui non possiamo costruire una Connessione di Galois perché manca l'elemento "migliore".
+
+\textbf{Esempio: Il Cerchio e i Poliedri.}
+Immagina di voler astrarre un \textbf{cerchio} usando dei \textbf{poliedri} (figure con lati dritti, come quadrati, esagoni, ecc.).
+\begin{itemize}
+    \item Puoi racchiudere il cerchio in un quadrato.
+    \item Puoi racchiuderlo in un ottagono (più preciso).
+    \item Puoi usare un poligono a 100 lati (ancora più preciso).
+\end{itemize}
+Non esiste un "poliedro più piccolo possibile" che contiene il cerchio, perché puoi sempre tagliarne un pezzetto in più aggiungendo un lato.
+Quindi, tra il dominio delle figure geometriche curve e quello dei poliedri \textbf{non esiste una Connessione di Galois}.
+
+\examquestion{Spiegare la differenza tra Galois Connection e Galois Insertion. Fornire un esempio intuitivo di quando la proprietà di riduttività ($\alpha \circ \gamma \sqsubseteq Id$) diventa un'uguaglianza.}
+
+\newpage
+
+\section{Semantica Astratta sui Control Flow Graphs (CFG)}
+
+Fino ad ora abbiamo visto la semantica concreta (le tracce di esecuzione). Per l'analisi statica vera e propria, è più comodo ragionare direttamente sul \textbf{Control Flow Graph (CFG)}.
+
+\subsection{Stati di Ingresso e Uscita}
+
+Dato un CFG, per ogni nodo (o punto del programma) $x_i$, vogliamo calcolare due insiemi di stati:
+
+\begin{itemize}
+    \item \textbf{Entry State (Stato di Ingresso):} È lo stato della memoria \textit{prima} che l'istruzione del nodo venga eseguita. Si calcola unendo (Join/LUB) gli stati di uscita di tutti i nodi predecessori.
+    \[ entry(x_i) = \bigsqcup \{ exit(x_j) \mid x_j \to x_i \} \]
+    \item \textbf{Exit State (Stato di Uscita):} È il risultato dell'applicazione della semantica (astratta o concreta) dell'istruzione allo stato di ingresso.
+    \[ exit(x_i) = \llbracket \text{stmt}(x_i) \rrbracket (entry(x_i)) \]
+\end{itemize}
+
+\begin{spiegazione}
+Immagina il CFG come una rete di tubi. L'acqua (i dati) scorre da un nodo all'altro. In ogni nodo, l'acqua che entra è la miscela di tutta l'acqua che arriva dai tubi precedenti. Il nodo poi "tratta" l'acqua (esegue l'istruzione) e la manda fuori.
+\end{spiegazione}
+
+\section{Sistemi di Equazioni e Punto Fisso}
+
+L'analisi statica si riduce a risolvere un sistema di equazioni ricorsive.
+
+\begin{definizione}[\textbf{Sistema di Equazioni Semantiche}]
+Dato un CFG con $m$ nodi, il sistema è definito come:
+\[ F = \{ x_i = f_i(x_1, \dots, x_m) \mid i = 1, \dots, m \} \]
+dove ogni $x_i$ rappresenta lo stato associato al nodo $i$ e $f_i$ è la funzione che calcola tale stato basandosi sugli altri.
+\end{definizione}
+
+L'obiettivo è trovare la \textbf{Soluzione Minima} (Least Fixpoint) di questo sistema.
+\begin{itemize}
+    \item Nel dominio concreto $\wp(\mathbb{Z})$, calcolare questo punto fisso è spesso \textbf{indecidibile} o richiede tempo infinito.
+    \item Ecco perché passiamo al dominio astratto.
+\end{itemize}
+
+\section{Approssimazione e Soundness}
+
+Poiché non possiamo calcolare il punto fisso concreto, introduciamo un dominio astratto $A$ che approssima il concreto $C$.
+
+\subsection{Soundness della Funzione Astratta}
+
+Affinché l'analisi sia affidabile, la funzione astratta $f^\sharp$ deve essere una \textbf{Sound Abstraction} della funzione concreta $f$.
+
+\begin{definizione}[\textbf{Soundness}]
+Siano $C$ e $A$ legati da una connessione di Galois $(\alpha, \gamma)$. Una funzione $f^\sharp: A \to A$ è sound rispetto a $f: C \to C$ se:
+\[ \forall c \in C, \quad \alpha(f(c)) \sqsubseteq_A f^\sharp(\alpha(c)) \]
+\textit{Oppure equivalentemente:}
+\[ \forall a \in A, \quad f(\gamma(a)) \sqsubseteq_C \gamma(f^\sharp(a)) \]
+\end{definizione}
+
+\begin{spiegazione}
+Significa che l'operazione astratta non deve mai essere "più ottimista" della realtà. Se nella realtà $2+2=4$, la mia somma astratta deve dire "il risultato è positivo" o "è pari", non può dire "è negativo". Deve includere la verità.
+\end{spiegazione}
+
+\section{Teoremi di Trasferimento del Punto Fisso}
+
+Una volta definito il sistema astratto, due teoremi ci garantiscono che il risultato che calcoleremo sarà corretto rispetto al programma reale.
+
+\subsection{Teorema di Approssimazione di Kleene}
+Se la funzione astratta è \textbf{continua}, possiamo calcolare il punto fisso iterando la funzione partendo dal basso ($\bot$). Il limite della sequenza è un'approssimazione corretta.
+\[ lfp(f) \sqsubseteq \gamma(\text{limite iterazioni astratte}) \]
+
+\subsection{Teorema di Approssimazione di Tarski}
+Questo è più generale (richiede solo la \textbf{monotonia}). Afferma che qualsiasi \textbf{post-fixpoint} astratto è un'approssimazione sicura.
+
+\begin{teorema}[\textbf{Approssimazione di Tarski}]
+Se $a$ è un post-fixpoint di $f^\sharp$ (cioè $f^\sharp(a) \sqsubseteq a$), allora:
+\[ lfp(f) \sqsubseteq \gamma(a) \]
+\end{teorema}
+
+\begin{spiegazione}
+Questo teorema è potentissimo. Ci dice che non serve trovare \textit{esattamente} il punto fisso minimo astratto (che potrebbe essere difficile). Basta trovare un punto "stabile" dove $f^\sharp(a)$ è più piccolo o uguale ad $a$. Qualsiasi punto stabile è una garanzia di sicurezza per il programma reale.
+\end{spiegazione}
+
+\examquestion{Enunciare il Teorema di Approssimazione di Tarski e spiegare perché è fondamentale per la terminazione dell'analisi statica (suggerimento: widening).}
 
 \end{document}
