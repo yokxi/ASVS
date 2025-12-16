@@ -9,6 +9,8 @@
 \usepackage{tikz}
 \usetikzlibrary{shapes, arrows, positioning, calc, patterns}
 \usepackage{xcolor}
+\usepackage{array}
+\usepackage{colortbl}
 \usepackage{listings}
 \usepackage{framed}
 \usepackage{stmaryrd}
@@ -19,6 +21,20 @@
 \definecolor{myblue}{RGB}{0, 102, 204}
 \definecolor{myred}{RGB}{204, 0, 0}
 \definecolor{mygreen}{RGB}{0, 153, 76}
+\definecolor{myorange}{RGB}{200, 100, 0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+
+\lstset{ 
+    language=Java,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{myblue}\bfseries,
+    commentstyle=\color{mygreen},
+    stringstyle=\color{codepurple},
+    breaklines=true,
+    frame=single,
+    backgroundcolor=\color{bg_gray}
+}
 
 \usepackage{titlesec}
 \titleformat{\section}
@@ -1151,5 +1167,748 @@ L'approccio è stato implementato in framework reali (come \textit{LiSA} o \text
 \end{itemize}
 
 \examquestion{Spiegare la differenza concettuale e operativa tra l'operatore \texttt{filter} e l'operatore \texttt{split}. Perché \texttt{split} è considerato un'ottimizzazione?}
+
+\newpage
+
+\section{Introduzione all'Analisi Dataflow}
+
+L'analisi Dataflow è una tecnica per raccogliere informazioni sullo stato del programma in ogni punto della sua esecuzione, senza eseguirlo realmente. Si basa sul **Control Flow Graph (CFG)**.
+
+L'idea chiave è definire come l'informazione:
+\begin{enumerate}
+    \item Viene **Generata (GEN)** da un'istruzione.
+    \item Viene **Uccisa (KILL)** da un'istruzione.
+    \item Fluisce attraverso il grafo (unendo i rami).
+\end{enumerate}
+
+\subsection{Monotone Frameworks}
+La maggior parte delle analisi dataflow rientra nel quadro dei "Monotone Frameworks". Un framework è definito da:
+\begin{itemize}
+    \item Un reticolo completo $L$ (il dominio dei dati, es. insiemi di variabili).
+    \item Funzioni di trasferimento $f_n: L \to L$ (come cambia lo stato nel nodo $n$).
+\end{itemize}
+
+\section{Classificazione delle Analisi}
+
+Le analisi si distinguono in base a due assi fondamentali:
+
+\begin{itemize}
+    \item \textbf{Direzione del Flusso:}
+    \begin{itemize}
+        \item \textbf{Forward:} L'informazione segue le frecce del CFG (dall'inizio alla fine).
+        \item \textbf{Backward:} L'informazione risale le frecce (dalla fine all'inizio).
+    \end{itemize}
+    \item \textbf{Tipo di Approssimazione (Join):}
+    \begin{itemize}
+        \item \textbf{May ($\cup$):} L'informazione è valida se è vera in \textit{almeno un} percorso ("potrebbe succedere").
+        \item \textbf{Must ($\cap$):} L'informazione è valida solo se è vera in \textit{tutti} i percorsi ("deve succedere").
+    \end{itemize}
+\end{itemize}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{|c|c|c|}
+\hline
+& \textbf{May (Unione $\cup$)} & \textbf{Must (Intersezione $\cap$)} \\
+\hline
+\textbf{Forward} & \textcolor{myblue}{\textbf{Reaching Definitions}} & \textcolor{myred}{\textbf{Available Expressions}} \\
+\hline
+\textbf{Backward} & \textcolor{myorange}{\textbf{Live Variables}} & \textcolor{mygreen}{\textbf{Very Busy Expressions}} \\
+\hline
+\end{tabular}
+\end{center}
+
+\examquestion{Riempire la tabella di classificazione delle analisi dataflow indicando per ogni cella il nome dell'analisi corrispondente.}
+
+\newpage
+
+\section{Le 4 Analisi Classiche}
+
+\subsection{1. Reaching Definitions (RD)}
+\textbf{Tipo:} Forward, May ($\cup$).
+\textbf{Obiettivo:} Per ogni punto del programma, determinare quali assegnamenti ($x := \dots$) fatti in precedenza potrebbero ancora essere validi (non sovrascritti).
+
+\begin{itemize}
+    \item \textbf{Gen(n):} Se $n$ è $x := a$, genera la definizione $n$.
+    \item \textbf{Kill(n):} Se $n$ è $x := a$, uccide tutte le altre definizioni di $x$ nel programma.
+    \item \textbf{Equazione:} $Out(n) = Gen(n) \cup (In(n) \setminus Kill(n))$.
+    \item \textbf{Merge:} $In(n) = \bigcup_{p \in pred(n)} Out(p)$.
+\end{itemize}
+
+\begin{spiegazione}
+Serve per il "debugging" (chi ha dato questo valore a $x$?) e per trovare variabili non inizializzate.
+\end{spiegazione}
+
+\subsection{2. Available Expressions (AE)}
+\textbf{Tipo:} Forward, Must ($\cap$).
+\textbf{Obiettivo:} Capire quali espressioni (es. $a+b$) sono state già calcolate e non modificate.
+
+\begin{itemize}
+    \item \textbf{Gen(n):} Se $n$ calcola $a+b$, genera l'espressione $a+b$.
+    \item \textbf{Kill(n):} Se $n$ modifica $a$ o $b$, uccide tutte le espressioni che contengono $a$ o $b$.
+    \item \textbf{Merge:} $In(n) = \bigcap_{p \in pred(n)} Out(p)$. (Deve essere disponibile da \textit{tutti} i percorsi).
+\end{itemize}
+
+\begin{spiegazione}
+Serve per l'ottimizzazione: se $a+b$ è disponibile, non serve ricalcolarlo, basta usare il valore vecchio.
+\end{spiegazione}
+
+\subsection{3. Live Variables (LV)}
+\textbf{Tipo:} Backward, May ($\cup$).
+\textbf{Obiettivo:} Capire se il valore attuale di una variabile $x$ verrà letto in futuro.
+
+\begin{itemize}
+    \item \textbf{Direzione:} Si parte da \texttt{Exit} e si torna indietro.
+    \item \textbf{Gen(n):} Se $n$ legge $x$ (es. $y := x + 1$), rende $x$ "viva".
+    \item \textbf{Kill(n):} Se $n$ sovrascrive $x$ (es. $x := 5$), rende la vecchia $x$ "morta" (perché il valore precedente viene perso prima di essere letto).
+    \item \textbf{Equazione:} $In(n) = Gen(n) \cup (Out(n) \setminus Kill(n))$.
+    \item \textbf{Merge:} $Out(n) = \bigcup_{s \in succ(n)} In(s)$.
+\end{itemize}
+
+\begin{spiegazione}
+Fondamentale per la \textbf{Dead Code Elimination}. Se assegno $x := 10$ ma poi $x$ non è "viva" (nessuno la legge), posso cancellare l'istruzione.
+\end{spiegazione}
+
+\subsection{4. Very Busy Expressions (VBE)}
+\textbf{Tipo:} Backward, Must ($\cap$).
+\textbf{Obiettivo:} Capire quali espressioni verranno sicuramente calcolate in futuro su tutti i percorsi, prima che le loro variabili cambino.
+
+\begin{spiegazione}
+Serve per la \textbf{Code Hoisting} (spostamento del codice). Se $a+b$ viene calcolato sia nel ramo \texttt{then} che nel ramo \texttt{else}, posso spostare il calcolo \textit{prima} dell'\texttt{if} per risparmiare spazio (codice più piccolo).
+\end{spiegazione}
+
+\examquestion{Descrivere l'analisi Live Variables: specificare se è Forward/Backward, May/Must e fornire l'equazione di trasferimento.}
+
+\newpage
+
+\section{Il Costo dei Domini Relazionali}
+
+Abbiamo visto che i domini relazionali (come Poliedri o Ottagoni) sono molto precisi ma computazionalmente pesanti (es. complessità $O(n^3)$ o esponenziale rispetto al numero di variabili $n$).
+
+\begin{spiegazione}
+Se il tuo programma ha 1000 variabili, usare i Poliedri è impossibile: la matrice delle relazioni sarebbe gigantesca e i calcoli lentissimi. Tuttavia, in molti punti del programma, la maggior parte delle variabili non ha vincoli interessanti (vale $\top$ o non è in relazione con le altre). È uno spreco di risorse tracciare relazioni per variabili "inutili".
+\end{spiegazione}
+
+\section{L'approccio LUV (Likely Unconstrained Variables)}
+
+Per risolvere questo problema, è stata introdotta una tecnica chiamata **LUV**. L'idea è identificare quali variabili sono "probabilmente non vincolate" (cioè il loro valore è $\top$) e rimuoverle temporaneamente dal dominio relazionale pesante.
+
+\subsection{Struttura e Componenti}
+
+L'approccio si basa su due componenti:
+
+\begin{enumerate}
+    \item \textbf{Dominio Sottostante (Underlying Domain):} Il dominio relazionale costoso (es. Poliedri) che vogliamo ottimizzare.
+    \item \textbf{Oracolo (Oracle):} Un'analisi molto economica e veloce (es. un'analisi sintattica o basata su intervalli) che "predice" quali variabili sono $\top$.
+\end{enumerate}
+
+\begin{definizione}[\textbf{LUV Wrapper}]
+Il dominio LUV agisce come un "guscio" attorno al dominio relazionale. Prima di eseguire un'operazione costosa (come un Join o un Meet):
+\begin{enumerate}
+    \item Interroga l'\textbf{Oracolo}: "Quali variabili sono $\top$?"
+    \item Semplifica lo stato del dominio relazionale rimuovendo quelle variabili (operazione di \texttt{forget} o \texttt{havoc}).
+    \item Esegue l'operazione sul dominio semplificato (che ora ha dimensione minore).
+\end{enumerate}
+\end{definizione}
+
+\section{Funzionamento dell'Oracolo}
+
+L'Oracolo deve essere **veloce**. Non deve fare calcoli complessi, altrimenti perdiamo il vantaggio dell'ottimizzazione. Solitamente si basa su:
+
+\begin{itemize}
+    \item \textbf{Analisi Sintattica:} Se una variabile è appena stata dichiarata ma non inizializzata, o è un input dell'utente (\texttt{read()}), è sicuramente non vincolata.
+    \item \textbf{Analisi Non-Relazionale:} Si può eseguire una veloce analisi a Intervalli prima. Se l'intervallo di $x$ è $[-\infty, +\infty]$, allora l'oracolo suggerisce che $x$ è $\top$ anche per i poliedri.
+\end{itemize}
+
+\subsection{Cosa succede se l'Oracolo sbaglia?}
+
+Qui entra in gioco il concetto di **Soundness**.
+
+\begin{itemize}
+    \item \textbf{Caso 1: Oracolo Preciso.} L'oracolo dice che $x$ è $\top$ e $x$ lo è davvero. Risparmiamo tempo e il risultato è esatto.
+    \item \textbf{Caso 2: Oracolo Impreciso (Pessimista).} L'oracolo dice che $x$ è $\top$, ma in realtà $x$ aveva un vincolo (es. $x > 5$).
+    \begin{itemize}
+        \item L'analizzatore si fida dell'oracolo e "dimentica" il vincolo su $x$ (lo imposta a $\top$).
+        \item \textbf{Conseguenza:} Perdiamo precisione (risultato più astratto).
+        \item \textbf{Sicurezza:} L'analisi rimane \textbf{Sound} (corretta), perché $\top$ include il valore vero (Sovra-approssimazione).
+    \end{itemize}
+\end{itemize}
+
+\begin{spiegazione}
+L'oracolo non deve essere perfetto, deve essere utile. Se ogni tanto "butta via" qualche informazione vera per sbaglio, l'analisi sarà meno precisa ma comunque sicura e molto più veloce. È un trade-off tra **Precisione** e **Performance**.
+\end{spiegazione}
+
+\newpage
+
+\section{Esempio di Ottimizzazione}
+
+Consideriamo un programma con variabili $x, y, z$.
+\[ \text{Stato attuale (Poliedri): } \{ x < y, \quad z = 5 \} \]
+
+Arriva l'istruzione \texttt{w = input()}.
+Il sistema deve calcolare il nuovo stato.
+
+\begin{itemize}
+    \item \textbf{Senza LUV:} Il dominio Poliedri aggiunge una dimensione per $w$. La matrice passa da $3 \times 3$ a $4 \times 4$. Calcola le relazioni (nessuna) per $w$. Costoso.
+    \item \textbf{Con LUV:}
+    \begin{enumerate}
+        \item L'Oracolo analizza \texttt{input()} e dice: "$w$ sarà sicuramente non vincolata ($\top$)".
+        \item L'Oracolo guarda $z$. Magari un'analisi precedente dice che $z$ non viene usata nel prossimo blocco. Dice: "$z$ è irrilevante".
+        \item Il dominio LUV rimuove $z$ e ignora $w$. Passa al dominio sottostante solo le variabili $x, y$.
+        \item Il calcolo avviene su una matrice $2 \times 2$ (molto più veloce).
+    \end{enumerate}
+\end{itemize}
+
+\examquestion{Spiegare il ruolo dell'Oracolo nella tecnica LUV (Likely Unconstrained Variables). Cosa succede alla correttezza (soundness) e alla precisione dell'analisi se l'oracolo classifica erroneamente una variabile vincolata come "non vincolata"?}
+\newpage
+
+\section{Architettura dei Domini in LiSA}
+
+In LiSA, l'astrazione è modulare. Non esiste un unico oggetto che rappresenta "lo stato del programma", ma una gerarchia di componenti che collaborano.
+
+\subsection{Lo Stato Astratto (AbstractState)}
+
+L'interfaccia principale è \texttt{AbstractState}. Essa combina due informazioni fondamentali:
+\begin{enumerate}
+    \item \textbf{Heap Domain:} Dove sono i dati in memoria? (Gestione di puntatori, alias, heap).
+    \item \textbf{Value Domain:} Quanto valgono i dati? (Intervalli, Segni, ecc.).
+\end{enumerate}
+
+\begin{spiegazione}
+Immagina un oggetto Java \texttt{p} con un campo \texttt{x}.
+\begin{itemize}
+    \item L'\textbf{Heap Domain} dice: "Il campo \texttt{x} dell'oggetto \texttt{p} corrisponde alla locazione di memoria astratta \texttt{loc\_1}".
+    \item Il \textbf{Value Domain} dice: "La locazione \texttt{loc\_1} ha valore nell'intervallo $[0, 10]$".
+\end{itemize}
+\end{spiegazione}
+
+\section{Semantic Domain e Value Domain}
+
+Per implementare un nuovo dominio numerico (es. Segni) in LiSA, bisogna estendere l'interfaccia \texttt{ValueDomain} (o una sua sottoclasse).
+
+\subsection{Metodi Fondamentali da Implementare}
+
+Ogni dominio deve fornire l'implementazione per le operazioni dell'Interpretazione Astratta:
+
+\subsubsection{1. Operazioni di Reticolo}
+\begin{itemize}
+    \item \texttt{lub(other)}: Calcola il Least Upper Bound (Join).
+    \item \texttt{le(other)}: Verifica l'ordine parziale ($\sqsubseteq$).
+    \item \texttt{top()} e \texttt{bottom()}: Restituiscono gli elementi $\top$ e $\bot$.
+\end{itemize}
+
+\subsubsection{2. Semantica degli Statement}
+\begin{itemize}
+    \item \texttt{assign(id, expression, ...)}:
+    Gestisce l'assegnamento $x = e$. Il dominio deve valutare l'espressione $e$ e aggiornare il valore associato all'identificatore $id$.
+    
+    \item \texttt{smallStepSemantics(expression, ...)}:
+    Valuta un'espressione aritmetica o logica.
+    Es: Se l'espressione è \texttt{a + b}, il dominio deve chiamare la sua somma astratta.
+    
+    \item \texttt{assume(expression, ...)}:
+    Gestisce i condizionali (es. \texttt{if (x > 0)}). Raffina lo stato astratto tenendo solo i valori che soddisfano la condizione.
+\end{itemize}
+
+\begin{lstlisting}[caption={Esempio di eval in un dominio astratto}]
+@Override
+public Domain eval(ValueExpression expression, ...) {
+    if (expression instanceof BinaryExpression) {
+        BinaryExpression bin = (BinaryExpression) expression;
+        if (bin.getOperator() == NumericOperator.PLUS)
+            // Chiama la somma astratta interna
+            return left.plus(right); 
+    }
+    return top(); // Se non so gestirlo, restituisco Top
+}
+\end{lstlisting}
+
+\newpage
+
+\section{Gestione della Memoria: Heap Domain}
+
+Se analizziamo linguaggi come Java o C, non abbiamo solo variabili intere, ma oggetti e puntatori. Il \texttt{ValueDomain} non sa cosa sia un puntatore.
+
+\subsection{Il Problema degli Alias}
+Codice: \texttt{a = new A(); b = a; b.x = 5;}
+L'analisi deve capire che modificando \texttt{b.x} stiamo modificando anche \texttt{a.x}.
+
+\subsection{Heap Domain in LiSA}
+L'interfaccia \texttt{HeapDomain} si occupa di tradurre espressioni complesse (accessi ai campi, array) in \textbf{Identificatori Astratti} univoci.
+
+\begin{itemize}
+    \item \textbf{MonolithicHeap:} L'implementazione più semplice (e imprecisa). Tratta tutto l'heap come un unico "calderone". Ogni modifica a un campo potrebbe modificare qualsiasi altro campo. Molto veloce, ma poco preciso (soundness garantita, ma troppi falsi positivi).
+    \item \textbf{PointBasedHeap:} Più precisa. Crea un grafo di allocazioni astratte. Distingue oggetti creati in punti diversi del codice (Allocation Sites).
+\end{itemize}
+
+\examquestion{In LiSA, qual è la responsabilità del componente \texttt{HeapDomain} rispetto al \texttt{ValueDomain}? Perché sono separati?}
+
+\section{Widening e Terminazione in LiSA}
+
+In LiSA, il widening non è applicato ciecamente a ogni iterazione. Si usa una strategia basata sui \textbf{WidenPoints}.
+
+\begin{definizione}[\textbf{Widening Point}]
+I punti del CFG dove applicare il widening per rompere i cicli. Solitamente sono le \textbf{teste dei cicli} (loop headers).
+\end{definizione}
+
+\begin{lstlisting}[caption={Logica del Fixpoint in LiSA}]
+// Pseudo-codice semplificato
+State current = entryState;
+State old = ...;
+
+if (isLoopHead(node)) {
+    // Se siamo in un ciclo, usiamo il widening per convergere
+    current = old.widening(current);
+} else {
+    // Altrimenti usiamo il normale Join (Lub)
+    current = old.lub(current);
+}
+\end{lstlisting}
+
+\begin{spiegazione}
+LiSA calcola automaticamente dove sono i cicli nel grafo e applica il widening solo lì. Questo preserva la precisione nei rami senza cicli (dove il Join basta) e garantisce la terminazione dove serve.
+\end{spiegazione}
+
+\newpage
+
+\section{Introduzione ai Domini Numerici}
+
+In questo capitolo esploriamo come l'analisi statica gestisce i numeri. Poiché tracciare ogni singolo numero intero possibile è troppo costoso (o impossibile), usiamo delle astrazioni chiamate **Domini Numerici**.
+
+Si dividono in due grandi famiglie:
+\begin{enumerate}
+    \item \textbf{Non-Relazionali:} Astraggono il valore di ogni variabile separatamente (es. $x \in [0, 10]$). Sono veloci (lineari) ma meno precisi.
+    \item \textbf{Relazionali:} Astraggono le relazioni tra variabili (es. $x < y$). Sono più precisi ma molto più lenti (es. Poliedri, Ottagoni).
+\end{enumerate}
+
+\section{Il Dominio dei Segni (Sign Domain)}
+
+È il dominio più semplice. Ci interessa solo sapere se un numero è positivo, negativo o zero.
+
+\subsection{Definizione del Reticolo}
+Il dominio $D^\sharp$ è composto da:
+\begin{itemize}
+    \item $\bot$: Insieme vuoto (impossibile).
+    \item $\{<0\}, \{=0\}, \{>0\}$: Segni base.
+    \item $\ge 0, \le 0, \ne 0$: Unioni dei precedenti.
+    \item $\top$: Qualsiasi numero ($\mathbb{Z}$).
+\end{itemize}
+
+\subsection{Aritmetica Astratta}
+Dobbiamo ridefinire le operazioni per questi simboli. Esempio della somma ($+^\sharp$):
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{+} & \textbf{<0} & \textbf{=0} & \textbf{>0} \\
+\hline
+\textbf{<0} & $<0$ & $<0$ & \cellcolor{myred!10}$\top$ \\
+\hline
+\textbf{=0} & $<0$ & $=0$ & $>0$ \\
+\hline
+\textbf{>0} & \cellcolor{myred!10}$\top$ & $>0$ & $>0$ \\
+\hline
+\end{tabular}
+\end{center}
+
+\begin{spiegazione}
+La somma di un positivo e un negativo ($>0 + <0$) restituisce $\top$ perché il risultato dipende dai valori precisi (es. $5 + (-2) > 0$ ma $2 + (-5) < 0$). Qui perdiamo precisione.
+\end{spiegazione}
+
+\section{Il Dominio della Constant Propagation (CP)}
+
+Serve a capire se una variabile ha un valore costante fisso durante l'esecuzione.
+
+\subsection{Reticolo "Flat" (Piatto)}
+\begin{itemize}
+    \item \textbf{Top ($\top$):} La variabile non è costante (può assumere più valori).
+    \item \textbf{Interi ($k \in \mathbb{Z}$):} La variabile vale esattamente $k$.
+    \item \textbf{Bottom ($\bot$):} Codice morto.
+\end{itemize}
+
+\noindent \textbf{Operazione di Join ($\sqcup$):}
+\[ d_1 \sqcup d_2 = \begin{cases} 
+d_1 & \text{se } d_1 = d_2 \\
+\top & \text{se } d_1 \neq d_2 
+\end{cases} \]
+Esempio: $5 \sqcup 5 = 5$, ma $5 \sqcup 3 = \top$.
+
+\newpage
+
+\section{Il Dominio degli Intervalli (Intervals)}
+
+È il dominio "standard" per l'analisi numerica. Rappresenta i valori come un range $[min, max]$.
+
+\subsection{Definizione}
+Un elemento astratto è una coppia $[l, u]$ dove $l \in \mathbb{Z} \cup \{-\infty\}$, $u \in \mathbb{Z} \cup \{+\infty\}$ e $l \le u$.
+
+\subsection{Operazioni Principali}
+
+\begin{itemize}
+    \item \textbf{Join ($\sqcup$) - Unione:} È il più piccolo intervallo che contiene entrambi (Convex Hull).
+    \[ [a, b] \sqcup [c, d] = [\min(a, c), \max(b, d)] \]
+    
+    \item \textbf{Meet ($\sqcap$) - Intersezione:} Serve per i filtri (es. \texttt{if (x > 5)}).
+    \[ [a, b] \sqcap [c, d] = [\max(a, c), \min(b, d)] \]
+
+    \item \textbf{Sottrazione Astratta:}
+    \[ [a, b] -^\sharp [c, d] = [a-d, \quad b-c] \]
+    \textit{Nota:} Gli estremi si incrociano. Per ottenere il risultato minimo, devo prendere il minimo minuendo ($a$) e sottrarre il massimo sottraendo ($d$).
+\end{itemize}
+
+\section{Il Problema della Terminazione (Widening)}
+
+Il dominio degli intervalli ha **catene ascendenti infinite**:
+\[ [0, 0] \sqsubseteq [0, 1] \sqsubseteq [0, 2] \dots \sqsubseteq [0, \infty] \]
+Un ciclo \texttt{while(x < 100) x++} potrebbe non terminare l'analisi in tempo utile.
+
+\subsection{Widening ($\nabla$)}
+L'operatore di Widening serve a "saltare" a infinito per garantire la terminazione.
+Dato un vecchio intervallo $[l_1, u_1]$ e uno nuovo $[l_2, u_2]$:
+\begin{itemize}
+    \item Se $l_2 < l_1$ (scende) $\implies$ Nuovo limite $-\infty$.
+    \item Se $u_2 > u_1$ (sale) $\implies$ Nuovo limite $+\infty$.
+    \item Altrimenti mantieni i vecchi limiti.
+\end{itemize}
+
+\section{Tabella Riassuntiva}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{|c|c|c|c|c|}
+\hline
+\textbf{Dominio} & \textbf{Tipo} & \textbf{Precisione} & \textbf{Costo} & \textbf{Catene Infinite?} \\
+\hline
+Segni & Non-Rel & Bassa & Bassissimo & No \\
+\hline
+Costanti & Non-Rel & Media & Basso & No \\
+\hline
+Intervalli & Non-Rel & Alta & Medio & \textbf{Sì (Widening)} \\
+\hline
+Poliedri & Relazionale & Altissima & Esponenziale & Sì \\
+\hline
+\end{tabular}
+\end{center}
+
+\examquestion{Perché nel dominio degli Intervalli l'operazione di sottrazione è definita come $[a, b] - [c, d] = [a-d, b-c]$ e non come $[a-c, b-d]$? \\
+\textit{Risposta:} Per garantire la \textbf{Soundness}. Il limite inferiore del risultato deve essere il valore più piccolo possibile. Per minimizzare $x - y$, devo prendere il $x$ più piccolo possibile ($a$) e sottrarre il $y$ più grande possibile ($d$).}
+
+\newpage
+
+\section{Il Problema della Non-Terminazione}
+
+Molti domini astratti utili (come **Intervalli** o **Poliedri**) hanno un'altezza infinita. Questo significa che esistono catene di valori che crescono all'infinito senza mai stabilizzarsi.
+
+Consideriamo questo ciclo semplice:
+\begin{verbatim}
+x = 0;
+while (x < 100) {
+    x++;
+}
+\end{verbatim}
+
+L'analisi classica (usando il Join $\sqcup$) calcola le iterazioni così:
+\begin{enumerate}
+    \item Iterazione 0: $[0, 0]$
+    \item Iterazione 1: $[0, 0] \sqcup [1, 1] = [0, 1]$
+    \item Iterazione 2: $[0, 1] \sqcup [2, 2] = [0, 2]$
+    \item ...
+    \item Iterazione 99: $[0, 99]$
+\end{enumerate}
+Se il ciclo fosse \texttt{while(true)}, l'analisi non finirebbe mai di calcolare $[0, \infty]$. Dobbiamo forzare la convergenza.
+
+\section{L'Operatore di Widening ($\nabla$)}
+
+Per risolvere il problema, sostituiamo l'operatore di Join ($\sqcup$) con il **Widening** ($\nabla$) nei punti di ciclo.
+
+\begin{definizione}[\textbf{Proprietà del Widening}]
+Un operatore $\nabla: A \times A \to A$ è un widening se:
+\begin{enumerate}
+    \item \textbf{Soundness:} È un limite superiore (Upper Bound).
+    \[ x \sqsubseteq (x \nabla y) \quad \text{e} \quad y \sqsubseteq (x \nabla y) \]
+    \item \textbf{Terminazione:} Per ogni sequenza crescente $x_0 \sqsubseteq x_1 \dots$, la sequenza definita da $y_0 = x_0, \ y_{n+1} = y_n \nabla x_{n+1}$ si stabilizza in un tempo finito.
+\end{enumerate}
+\end{definizione}
+
+\begin{spiegazione}
+Il Join ($\sqcup$) è prudente: cerca il più piccolo insieme che contiene tutto.
+Il Widening ($\nabla$) è impaziente: se vede che un valore sta crescendo, "salta alle conclusioni" ed estende l'insieme fino all'infinito (o a un valore molto grande) per finire in fretta.
+\end{spiegazione}
+
+\subsection{Esempio: Widening sugli Intervalli}
+
+Dato un vecchio intervallo $I_1 = [l_1, u_1]$ e il risultato della nuova iterazione $I_2 = [l_2, u_2]$.
+Il widening controlla se i limiti sono stabili:
+
+\[
+[l_1, u_1] \nabla [l_2, u_2] = [L, U]
+\]
+Dove:
+\begin{itemize}
+    \item $L = l_1$ se $l_2 \ge l_1$ (stabile), altrimenti $-\infty$.
+    \item $U = u_1$ se $u_2 \le u_1$ (stabile), altrimenti $+\infty$.
+\end{itemize}
+
+\textbf{Riapplichiamolo al ciclo precedente:}
+\begin{enumerate}
+    \item Iterazione 0: $W_0 = [0, 0]$.
+    \item Iterazione 1: Calcolo $[0, 0] \sqcup [1, 1] = [0, 1]$.
+    \item Applico Widening: $W_0 \nabla [0, 1]$.
+    \begin{itemize}
+        \item Limite inferiore $0 \to 0$ (Stabile).
+        \item Limite superiore $0 \to 1$ (Instabile/Cresciuto!).
+    \end{itemize}
+    \item Risultato: $[0, +\infty]$.
+    \item \textbf{Stop.} L'analisi ha trovato un punto fisso (stabile) in soli 2 passaggi.
+\end{enumerate}
+
+\section{Recuperare Precisione: Narrowing ($\Delta$)}
+
+Il Widening è fantastico per terminare, ma è brutale.
+Nell'esempio sopra, il risultato è $x \in [0, +\infty]$. Ma il codice diceva \texttt{while(x < 100)}. Sappiamo che $x$ non supererà mai 100.
+Abbiamo perso questa informazione "saltando" a infinito.
+
+Per recuperarla, usiamo l'operatore di **Narrowing ($\Delta$)**.
+
+\begin{definizione}[\textbf{Narrowing}]
+Il Narrowing serve a migliorare (restringere) un'approssimazione post-fixpoint ottenuta col widening.
+Si basa sul fatto che applicando un altro giro di semantica del ciclo partendo da $[0, +\infty]$, il vincolo \texttt{x < 100} taglierà via l'infinito.
+\end{definizione}
+
+\subsection{Come funziona il ciclo completo}
+\begin{enumerate}
+    \item \textbf{Fase Ascendente (Widening):}
+    Saliamo velocemente fino a trovare un'approssimazione sicura ma grossolana.
+    \[ \text{Risultato: } [0, +\infty] \]
+    
+    \item \textbf{Fase Discendente (Narrowing):}
+    Prendiamo $[0, +\infty]$ e lo facciamo passare *una volta sola* attraverso il corpo del ciclo (che contiene la guardia \texttt{x < 100}).
+    \[ [0, +\infty] \cap (-\infty, 99] = [0, 99] \]
+    Il risultato raffinato $[0, 99]$ è ancora un punto fisso valido, ma molto più preciso.
+\end{enumerate}
+
+\section{Widening con Soglie (Thresholds)}
+
+Saltare subito a $\pm\infty$ è spesso troppo aggressivo. Una tecnica comune è il **Widening con Soglie**.
+
+Invece di saltare a $\infty$, saltiamo a un insieme predefinito di valori "interessanti" $T = \{0, 1, 2, 5, 10, 100, \dots\}$.
+
+\textbf{Esempio:}
+Se l'intervallo cresce da $[0, 1]$ a $[0, 2]$, invece di dire $[0, +\infty]$, proviamo a dire "forse arriva fino a 10?".
+Risultato: $[0, 10]$.
+Se poi supera anche 10, proviamo 100, e così via.
+
+\examquestion{
+\textbf{Domanda:} Spiegare perché l'uso del solo operatore di Join ($\sqcup$) non garantisce la terminazione dell'analisi statica sul dominio degli Intervalli. Qual è il ruolo del Widening e come interagisce con il Narrowing?
+\\
+\textbf{Risposta Chiave:}
+Il dominio degli intervalli contiene catene ascendenti infinite (es. $[0,1], [0,2], \dots$). Il Join non può "indovinare" il limite e continua a calcolare passo passo. Il Widening garantisce la terminazione estrapolando il limite (spesso a $\infty$). Il Narrowing recupera la precisione persa rifinendo il risultato ottenuto dal Widening.
+}
+
+\newpage
+
+\section{Perché serve il Narrowing?}
+
+Nel capitolo precedente abbiamo visto che il \textbf{Widening ($\nabla$)} ci permette di analizzare i cicli in tempo finito, ma spesso produce risultati troppo grossolani (sovrastima eccessiva).
+
+\textbf{Esempio classico:}
+\begin{verbatim}
+x = 0;
+while (x < 10) { x++; }
+\end{verbatim}
+Il Widening, vedendo $x$ crescere ($[0,1], [0,2] \dots$), "salta" a $[0, +\infty]$.
+\begin{itemize}
+    \item \textbf{Soundness:} È corretto? Sì, tutti i valori reali ($0 \dots 10$) sono in $[0, +\infty]$.
+    \item \textbf{Precisione:} È preciso? No. Sappiamo che $x$ non supererà mai $10$.
+\end{itemize}
+
+Il \textbf{Narrowing ($\Delta$)} serve a correggere questa sovrastima partendo dal risultato sicuro del Widening e migliorandolo.
+
+\section{Definizione e Funzionamento}
+
+Il Narrowing è un operatore che raffina un'approssimazione sicura (un Post-Fixpoint).
+
+\begin{definizione}[\textbf{Operatore di Narrowing} $\Delta$]
+Un operatore $\Delta: A \times A \to A$ è un narrowing se, dato un punto fisso approssimato $y$ (dove $F(y) \sqsubseteq y$):
+\[ y \Delta F(y) \sqsubseteq y \]
+E garantisce che per ogni catena discendente $y_{n+1} = y_n \Delta F(y_n)$, questa non scenda mai "sotto" al vero punto fisso (preserva la soundness).
+\end{definizione}
+
+\begin{spiegazione}
+Il Narrowing prende il risultato "esagerato" del Widening ($y$) e prova a eseguire un altro giro del ciclo ($F(y)$).
+Se facendo un altro giro ottengo un risultato più piccolo di quello che avevo, significa che posso "stringere" il mio insieme senza perdere sicurezza.
+\end{spiegazione}
+
+\section{L'Algoritmo: Ascendente e Discendente}
+
+L'analisi statica di un ciclo avviene in due fasi distinte:
+
+\subsection{Fase 1: Sequenza Ascendente (Widening)}
+Si parte da $\bot$ e si usa $\nabla$ per trovare rapidamente un limite superiore sicuro $A$.
+\[ X_0 = \bot, \quad X_{i+1} = X_i \nabla F(X_i) \]
+Risultato: Un punto fisso $A$ (es. $[0, +\infty]$) tale che $F(A) \sqsubseteq A$.
+
+\subsection{Fase 2: Sequenza Discendente (Narrowing)}
+Si parte da $A$ e si usa $\Delta$ per scendere verso il punto fisso minimo reale.
+\[ Y_0 = A, \quad Y_{i+1} = Y_i \Delta F(Y_i) \]
+
+\newpage
+
+\section{Esempio Pratico Completo}
+
+Analizziamo il ciclo \texttt{while (x < 10) x++} con il dominio Intervalli.
+
+\subsection{1. Fase Ascendente (Widening)}
+\begin{itemize}
+    \item Iter 1: $[0, 0]$
+    \item Iter 2: $[0, 0] \sqcup [1, 1] = [0, 1]$. Il limite sale.
+    \item Widening: $[0, 0] \nabla [0, 1] = [0, +\infty]$.
+    \item Verifica stabilità: Se entro con $[0, +\infty]$, il corpo del ciclo (limitato da $x<10$) produce numeri fino a 9. Unito all'ingresso 0, il nuovo stato è $[0, 9]$.
+    \item Poiché $[0, 9] \sqsubseteq [0, +\infty]$, abbiamo raggiunto un \textbf{Post-Fixpoint}. Ci fermiamo.
+\end{itemize}
+\textbf{Stato attuale:} $x \in [0, +\infty]$. (Sicuro, ma brutto).
+
+\subsection{2. Fase Discendente (Narrowing)}
+Ora applichiamo il Narrowing per stringere il risultato.
+Il Narrowing sugli intervalli è spesso definito semplicemente come l'intersezione: $[a, b] \Delta [c, d] = [a, b] \sqcap [c, d]$.
+
+\begin{itemize}
+    \item \textbf{Start:} $Y_0 = [0, +\infty]$.
+    \item \textbf{Calcolo F($Y_0$):} Eseguiamo un giro del ciclo partendo da $Y_0$.
+    \begin{itemize}
+        \item Filtro guardia ($x < 10$): L'intervallo diventa $[0, 9]$.
+        \item Corpo ($x++$): Diventa $[1, 10]$.
+        \item Unione con l'ingresso del ciclo ($x=0$): $[0, 0] \sqcup [1, 10] = [0, 10]$.
+    \end{itemize}
+    \item \textbf{Applicazione Narrowing:}
+    \[ Y_1 = Y_0 \Delta F(Y_0) = [0, +\infty] \sqcap [0, 10] = [0, 10] \]
+    \item \textbf{Risultato:} Abbiamo recuperato il limite superiore corretto!
+\end{itemize}
+
+\section{Non-Terminazione del Narrowing}
+
+Attenzione: mentre il Widening \textbf{deve} garantire la terminazione, il Narrowing teoricamente potrebbe scendere all'infinito senza mai fermarsi (se il dominio ha catene discendenti infinite, come i Razionali $\mathbb{Q}$ o i Reali $\mathbb{R}$).
+
+Tuttavia, nel dominio degli Intervalli Interi ($\mathbb{Z}$), le catene discendenti sono finite o si stabilizzano presto.
+Nella pratica degli analizzatori statici (come LiSA), si applica il Narrowing solo per un numero fissato di passi (es. 2 o 3 volte) e poi ci si accontenta.
+
+\examquestion{
+\textbf{Domanda:} Che relazione c'è tra Widening e Narrowing? È possibile usare il Narrowing senza aver prima usato il Widening?
+\\
+\textbf{Risposta:} 
+Widening e Narrowing sono complementari.
+\begin{itemize}
+    \item Il Widening calcola un'approssimazione \textbf{dal basso verso l'alto} (over-approximation) per garantire la terminazione.
+    \item Il Narrowing raffina quell'approssimazione \textbf{dall'alto verso il basso} per recuperare precisione.
+\end{itemize}
+Non ha senso usare il Narrowing senza Widening (o senza un post-fixpoint di partenza), perché il Narrowing richiede di partire già da un insieme "sicuro" che contiene la soluzione. Se partissi da $\bot$, non avrei nulla da restringere.
+}
+
+\newpage
+
+\section{Definizione e Struttura}
+
+I **Domini Non Relazionali** (o a \textit{Attributi Indipendenti}) sono il modo più semplice per analizzare lo stato di un programma con multiple variabili.
+
+L'idea fondamentale è l'\textbf{astrazione indipendente}: ogni variabile viene analizzata isolatamente, dimenticando completamente le relazioni tra di esse.
+
+\subsection{Lifting Funzionale}
+Se abbiamo un dominio astratto di base $D$ (es. Intervalli), lo stato astratto del programma $S^\sharp$ è definito come una funzione che mappa ogni variabile del programma ($Var$) in un elemento di $D$.
+\[ S^\sharp : Var \to D \]
+Oppure, visto come prodotto cartesiano:
+\[ S^\sharp = D \times D \times \dots \times D \quad (|Var| \text{ volte}) \]
+
+\begin{spiegazione}
+Immagina un foglio Excel.
+\begin{itemize}
+    \item La colonna A descrive la variabile $x$ (es. è positiva).
+    \item La colonna B descrive la variabile $y$ (es. è pari).
+\end{itemize}
+Non c'è nessuna cella che dice "La colonna A è maggiore della colonna B". Le colonne non si parlano.
+\end{spiegazione}
+
+\section{Operazioni Puntuali (Pointwise Operations)}
+
+Poiché le variabili sono indipendenti, tutte le operazioni di reticolo (Join, Meet, Order) vengono eseguite "punto per punto" (variabile per variabile).
+
+Dati due stati $S_1$ e $S_2$:
+\begin{itemize}
+    \item **Ordinamento ($\sqsubseteq$):** $S_1 \sqsubseteq S_2 \iff \forall v \in Var, \ S_1(v) \sqsubseteq_D S_2(v)$.
+    \item **Join ($\sqcup$):** $(S_1 \sqcup S_2)(v) = S_1(v) \sqcup_D S_2(v)$.
+    \item **Widening ($\nabla$):** $(S_1 \nabla S_2)(v) = S_1(v) \nabla_D S_2(v)$.
+\end{itemize}
+
+\textbf{Esempio (Intervalli):}
+\begin{align*}
+    S_1 &= \{ x \in [0, 2], \ y \in [10, 20] \} \\
+    S_2 &= \{ x \in [2, 4], \ y \in [10, 10] \} \\
+    S_1 \sqcup S_2 &= \{ x \in [0, 4], \ y \in [10, 20] \}
+\end{align*}
+Calcoliamo il join di $x$ con $x$, e di $y$ con $y$.
+
+\section{Il Limite della Precisione (Relazioni)}
+
+Il difetto principale è l'incapacità di rappresentare vincoli che coinvolgono più variabili contemporaneamente.
+
+\textbf{Esempio del "Quadrato":}
+\[ x \in [0, 10], \quad y \in [0, 10] \]
+Geometricamente, questo stato rappresenta un quadrato nel piano cartesiano.
+Se aggiungiamo il vincolo (filtro):
+\[ \text{assume}(x == y) \]
+Un dominio non relazionale \textbf{non può imparare nulla} da questo vincolo (o impara pochissimo).
+\begin{itemize}
+    \item Non può dire "adesso so che $x$ è uguale a $y$".
+    \item Continuerà a dire $x \in [0, 10]$ e $y \in [0, 10]$.
+    \item Geometricamente, include ancora punti come $(x=2, y=8)$, che violano la condizione $x=y$.
+\end{itemize}
+
+\begin{spiegazione}
+Un dominio non relazionale approssima qualsiasi figura geometrica complessa usando solo un **Iper-Rettangolo** (o "Box") allineato agli assi. Non può rappresentare linee oblique o cerchi.
+\end{spiegazione}
+
+\section{Gestione di Bottom (Smash Product)}
+
+Un dettaglio tecnico cruciale riguarda la gestione dello stato $\bot$ (impossibile).
+
+Se analizzando un programma scopriamo che \textbf{una sola} variabile $x$ assume il valore $\bot$ (insieme vuoto), cosa succede all'intero stato?
+
+\begin{definizione}[\textbf{Smash Product}]
+In un dominio ben formato, se anche solo una variabile è $\bot$, l'intero stato collassa a $\bot$ (Bottom).
+\[ (\dots, v_i \mapsto \bot, \dots) \equiv \bot_{state} \]
+\end{definizione}
+
+\begin{spiegazione}
+Se la variabile $x$ è "impossibile" (insieme vuoto), significa che l'esecuzione non può aver raggiunto quel punto. Se non siamo lì, allora non esistono nemmeno $y$ o $z$. L'intero stato è irraggiungibile.
+\end{spiegazione}
+
+\section{Confronto: Relazionale vs Non-Relazionale}
+
+\begin{center}
+\renewcommand{\arraystretch}{1.5}
+\begin{tabular}{|c|c|c|}
+\hline
+\textbf{Caratteristica} & \textbf{Non-Relazionale} & \textbf{Relazionale} \\
+\hline
+\textbf{Esempi} & Segni, Intervalli, Costanti & Poliedri, Ottagoni, Congruenze \\
+\hline
+\textbf{Rappresentazione} & $Var \to D$ (Funzione) & Matrici, Grafi, Sistemi di eq. \\
+\hline
+\textbf{Forma Geometrica} & Scatole (Box) assi-parallele & Forme con lati obliqui \\
+\hline
+\textbf{Complessità} & Lineare $O(|Var|)$ & Cubica o Esponenziale \\
+\hline
+\textbf{Precisione} & Bassa su $x=y$ o $x < y$ & Alta \\
+\hline
+\end{tabular}
+\end{center}
+
+\examquestion{
+\textbf{Domanda:} Dato lo stato astratto di Intervalli $S = \{x \in [0, 10], y \in [0, 10]\}$, quale sarebbe il risultato dell'operazione $\text{assume}(x < y)$ in un dominio non relazionale puro?
+\\
+\textbf{Risposta:} 
+Nella maggior parte dei casi, lo stato rimarrebbe invariato o subirebbe minime modifiche.
+Un dominio non relazionale non può memorizzare la relazione $x < y$. Potrebbe al massimo raffinare gli estremi se $x$ fosse $[100, 200]$ e $y$ $[0, 10]$, scoprendo un'incompatibilità ($\bot$). Ma con $[0, 10]$ per entrambi, il dominio non può escludere i casi in cui $x \ge y$ senza perdere la rappresentazione a intervalli indipendenti.
+}
 
 \end{document}
